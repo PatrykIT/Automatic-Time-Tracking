@@ -5,6 +5,7 @@
 
 #include <QDebug>
 #include <QGraphicsPixmapItem>
+#include <QMessageBox>
 
 #include <thread>
 #include <iostream>
@@ -15,10 +16,10 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    Manager manager(*ui);
+    Manager *manager = new Manager(this);
 
     /* Disconnect logic of program from GUI */
-    std::thread manager_thread(&Manager::Start, manager);
+    std::thread manager_thread(&Manager::Start, manager); //std::thread takes its arguments by value. So passing *manager called CopyCtr! :D
     manager_thread.join();
 }
 
@@ -88,6 +89,19 @@ void MainWindow::on_Start_Stats_Button_clicked() //Put this to manager object
     text_2->setPlainText(item_2.name);
     graphic_scene->addItem(text_2);
     */
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QMessageBox::StandardButton question_exit = QMessageBox::question(this, "Do we say goodbye?", tr("Are you sure?"),
+                                                                      QMessageBox::Yes | QMessageBox::No);
+    if(question_exit == QMessageBox::Yes)
+    {
+        //Save time stats
+        event->accept();
+    }
+    else
+        event->ignore();
 }
 
 

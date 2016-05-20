@@ -14,6 +14,6 @@ int main(int argc, char *argv[])
 }
 
 /*
- * 1. Check if ui is copied good. We need to have access to it from Manager class. If good, then finisz Manager::Start()
+ * 1. Finished on Stop_Counting_Time(). Check if Add_Item() works, and test Start() function. Then go ahead with the rest of app :)
  * 2. Add error codes / throwing if regex fails.
 */

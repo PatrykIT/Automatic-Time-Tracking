@@ -2,12 +2,15 @@
 #include <QPixmap>
 
 #include <memory>
+
+int Item::ID = 0;
+
 Item::Item()
 {
-
+    ID = ID++;
 }
 
-Item::Item(const Item &rhs) : name(rhs.name), time_statistics(rhs.time_statistics)
+Item::Item(const Item &rhs) : name(rhs.name)
 {
     icon = std::shared_ptr<QPixmap>(new QPixmap); //or : icon.reset(new QPixmap); Shared pointers are explicit. You can't just assign the ptr type to them.
     *icon = *rhs.icon;

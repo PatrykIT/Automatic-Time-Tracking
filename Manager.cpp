@@ -1,26 +1,39 @@
+//Local includes
 #include "Manager.h"
+#include "ui_mainwindow.h"
+#include "Item.h"
 
+//QT includes
 #include <QDebug>
 
+//C++ includes
+#include <thread> //sleep_for
 #include <iostream>
-#include "ui_mainwindow.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
-std::map<Item::Time_Statistics, Item> Manager::objects;
+std::vector<std::pair<Item, Manager::Process_Statistics>> Manager::objects;
 
-Manager::Manager(Ui::MainWindow &ui, QObject *parent) : QObject(parent), ui_m(&ui)
+Manager::Manager(QObject *parent) : QObject(parent)
 {
-
+    objects.reserve(128);
 }
 
+Manager::Process_Statistics::Process_Statistics() : total_hours(0.0), total_minutes(0.0), total_seconds(0.0),
+    begin_time(Process_Statistics::_clock::now())
+{ }
 
-Manager::Manager(const Manager &other)
+Manager::Process_Statistics::~Process_Statistics()
 {
-    objects = other.objects;
-    //std::cout << objects[] //How to cout Time Statistics? :D
+    end_time = Process_Statistics::_clock::now();
+    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
 }
 
+Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
+    : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
+      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference)
+{ }
 
 Manager::~Manager()
 {
@@ -30,11 +43,11 @@ Manager::~Manager()
 /**
  * @brief System_Call
  * @param command - command name to be called
- * @return output of command call
+ * @return whole output of command call looking like '"0x02000002  0 131\n0x02000007  0 131\n0x0200000c  0 131\n"'
  */
-std::string Manager::System_Call(const string &command)
+std::string Manager::System_Call(const std::string &command)
 {
-    char buffer[256];
+    char buffer[1024]; /* TO DO: This shouldn't be hardcoded. We should take the size of pipe, and dynamically allocate memory for buffer with that size. */
     std::string result = "";
 
     std::shared_ptr<FILE> pipe (popen(command.c_str(), "r"), pclose); //Why unique ptr not working??
@@ -45,8 +58,10 @@ std::string Manager::System_Call(const string &command)
     /* Append output from system call to string. */
     while (!feof(pipe.get()))
     {
-        if (fgets(buffer, 256, pipe.get()) != NULL)
+        if (fgets(buffer, 1024, pipe.get()) != NULL)
+        {
             result += buffer;
+        }
     }
 
     return result;
@@ -57,7 +72,7 @@ std::string Manager::System_Call(const string &command)
  * @param input - vector of strings, in which each string is a separate line looking like '0x03000001  0 1883'.
  * @return set of PIDs
  */
-std::set<int> Manager::Get_PIDs_from_strings(std::vector<string> &input)
+std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input)
 {
     std::set<int> pid_numbers;
 
@@ -90,9 +105,9 @@ std::set<int> Manager::Get_PIDs_from_strings(std::vector<string> &input)
 /**
  * @brief Split_Output_to_Strings
  * @param input - result of calling system call
- * @return vector of split output - one string as one line
+ * @return vector of split output - one string as one line - looking like '0x02000002  0 1315'
  */
-std::vector<std::string> Manager::Split_Output_to_Strings(const string &input)
+std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::string &input)
 {
     /* Each line is contained as separate string. */
     std::vector <std::string> output_line;
@@ -116,36 +131,28 @@ std::vector<std::string> Manager::Split_Output_to_Strings(const string &input)
 void Manager::Start()
 {
     std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
-    std::string result = System_Call(command);
+    std::string system_call_result = System_Call(command);
 
-    std::vector<std::string> strings_split = Split_Output_to_Strings(result);
-    std::set<int> pid_numbers = Get_PIDs_from_strings(strings_split);
-
-    std::vector<std::string> processes_names;
-
-    /* Call ps syscall to get processes names based on their PIDs */
-    for(auto it = pid_numbers.begin(); it != pid_numbers.end(); ++it)
-    {
-        /* TO DO: Add nicer way of calling function (got hint on e-mail) */
-        processes_names.emplace_back(System_Call("ps -p " + std::to_string(*it) + " -o comm="));
-    }
+    std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
+    std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
+    std::vector<std::string> processes_names = Get_Processes_Names(pid_numbers);
 
     /* Create Items out of processes names */
     for(auto &process : processes_names)
     {
-        Item *item = new Item; //Is freed at the end of the program
-        item->name = QString::fromStdString(process);
+        Item item;
+        item.name = process;
 
         /* TO DO: Add retrieving icons from system. */
-        item->Set_Icon("/home/patryk/QT Projects/Manic LTime/HeavyRain.png");
-
-        item->time_statistics.total_hours = item->time_statistics.total_minutes = item->time_statistics.total_seconds = 0;
-        Add_Item(*item);
+        item.Set_Icon("/home/patryk/QT Projects/Manic LTime/HeavyRain.png");
+        //std::this_thread::sleep_for(std::chrono::seconds(1));
+        Add_Item(item);
     }
 
-    /* Show output on screen */
+    Print_Elapsed_Time();
 
 
+    /* Send signal to main window to show output on screen */
 
 }
 
@@ -155,5 +162,51 @@ void Manager::Start()
 
 void Manager::Add_Item(const Item &item)
 {
-    objects.insert(make_pair(item.time_statistics, item));
+    //Can we make this function one-liner?
+    Process_Statistics tmp;
+    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, tmp));
 }
+
+
+void Manager::Print_Elapsed_Time()
+{
+    for(auto &object : objects)
+    {
+        object.second.end_time = Process_Statistics::_clock::now();
+        object.second.time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(object.second.end_time - object.second.begin_time).count();
+
+        qDebug() << QString::fromStdString(object.first.name) << ": " << QString::number(object.second.time_difference);
+    }
+}
+
+
+/**
+ * @brief Calls 'ps' syscall to get processes names based on their PIDs.
+ * @param pid_numbers - PIDs to be translated to names of processes.
+ * @return vector of processes names.
+ */
+
+std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_numbers)
+{
+    std::vector<std::string> processes_names;
+
+    /* Call 'ps' syscall to get processes names based on their PIDs */
+    for(auto it = pid_numbers.begin(); it != pid_numbers.end(); ++it)
+    {
+        /* TO DO: Add nicer way of calling function (got hint on e-mail) */
+        std::string process_name = System_Call("ps -p " + std::to_string(*it) + " -o comm=");
+        /* Remove new line from the end of string. */
+        process_name.erase(std::remove(process_name.begin(), process_name.end(), '\n')); //We could have called .pop_back(), more efficient, but less readable.
+
+        processes_names.emplace_back(std::move(process_name));
+    }
+
+    return processes_names;
+}
+
+
+
+
+
+
+
