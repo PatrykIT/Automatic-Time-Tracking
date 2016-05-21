@@ -5,6 +5,8 @@
 
 #include <set>
 #include <chrono>
+#include <iostream>
+#include <fstream>
 
 class Item;
 class Manager : public QObject
@@ -18,7 +20,7 @@ private:
         Process_Statistics();
         ~Process_Statistics();
         Process_Statistics(const Process_Statistics &statistics);
-        double total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
+        int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
 
         bool operator < (const Process_Statistics &rhs) const
         {
@@ -33,14 +35,21 @@ private:
         //typedef std::chrono::duration<double, std::ratio<1>> seconds; //It's more precise, but we don't need that much precision.
         typedef std::chrono::seconds seconds;
         typedef std::chrono::minutes minutes;
+
+        void Stop_Counting_Time();
+        void Parse_Time();
     };
 
     static std::vector<std::pair<Item, Process_Statistics>> objects;
+    std::fstream file_stats;
+    std::string path_to_file = "Statistics.txt";
 
 
 //Methods
 private:
     static void Add_Item(const Item &item);
+    void Save_Statistics_to_File();
+
 
     std::string System_Call(const std::string &command);
     std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input);

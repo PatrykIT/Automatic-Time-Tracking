@@ -20,7 +20,7 @@ Manager::Manager(QObject *parent) : QObject(parent)
     objects.reserve(128);
 }
 
-Manager::Process_Statistics::Process_Statistics() : total_hours(0.0), total_minutes(0.0), total_seconds(0.0),
+Manager::Process_Statistics::Process_Statistics() : total_hours(0), total_minutes(0), total_seconds(0),
     begin_time(Process_Statistics::_clock::now())
 { }
 
@@ -145,12 +145,15 @@ void Manager::Start()
 
         /* TO DO: Add retrieving icons from system. */
         item.Set_Icon("/home/patryk/QT Projects/Manic LTime/HeavyRain.png");
+
         //std::this_thread::sleep_for(std::chrono::seconds(1));
         Add_Item(item);
+        std::this_thread::sleep_for(std::chrono::seconds(12));
     }
 
-    Print_Elapsed_Time();
+    //Print_Elapsed_Time();
 
+    Save_Statistics_to_File();
 
     /* Send signal to main window to show output on screen */
 
@@ -172,9 +175,7 @@ void Manager::Print_Elapsed_Time()
 {
     for(auto &object : objects)
     {
-        object.second.end_time = Process_Statistics::_clock::now();
-        object.second.time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(object.second.end_time - object.second.begin_time).count();
-
+        object.second.Stop_Counting_Time();
         qDebug() << QString::fromStdString(object.first.name) << ": " << QString::number(object.second.time_difference);
     }
 }
@@ -205,6 +206,56 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
 }
 
 
+
+void Manager::Save_Statistics_to_File()
+{
+    file_stats.open(path_to_file, std::fstream::out);
+
+    for(auto &object : objects)
+    {
+        object.second.Stop_Counting_Time();
+        object.second.Parse_Time();
+        //file_stats << object.first.name << " ::: " << std::fixed << object.second.time_difference << "\n";
+        file_stats << object.first.name << " ::: " << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
+
+        cout << std::fixed << object.second.time_difference << endl;
+    }
+}
+
+
+
+
+void Manager::Process_Statistics::Parse_Time()
+{
+
+    Stop_Counting_Time();
+    /* TO DO: Make asserts, that time_difference at the beginning of this function is of type chrono::seconds */
+
+    /* If process was ON more than 60 seconds */
+    if(time_difference >= 60.0)
+    {
+
+        total_seconds = time_difference;
+        time_difference = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
+        total_minutes = time_difference;
+
+
+    }
+    else
+    {
+        total_seconds = time_difference;
+    }
+
+}
+
+
+
+void Manager::Process_Statistics::Stop_Counting_Time()
+{
+    end_time = Process_Statistics::_clock::now();
+    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
+
+}
 
 
 
