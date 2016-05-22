@@ -14,6 +14,6 @@ int main(int argc, char *argv[])
 }
 
 /*
- * 1. Finished on Stop_Counting_Time(). Check if Add_Item() works, and test Start() function. Then go ahead with the rest of app :)
+ * 1.
  * 2. Add error codes / throwing if regex fails.
 */

@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     /* Disconnect logic of program from GUI */
     std::thread manager_thread(&Manager::Start, manager); //std::thread takes its arguments by value. So passing *manager called CopyCtr! :D
-    manager_thread.join();
+    manager_thread.detach();
 }
 
 MainWindow::~MainWindow()

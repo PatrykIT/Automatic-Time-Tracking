@@ -45,7 +45,7 @@ Manager::~Manager()
  * @param command - command name to be called
  * @return whole output of command call looking like '"0x02000002  0 131\n0x02000007  0 131\n0x0200000c  0 131\n"'
  */
-std::string Manager::System_Call(const std::string &command)
+std::string Manager::System_Call(const std::string &command) const
 {
     char buffer[1024]; /* TO DO: This shouldn't be hardcoded. We should take the size of pipe, and dynamically allocate memory for buffer with that size. */
     std::string result = "";
@@ -72,7 +72,7 @@ std::string Manager::System_Call(const std::string &command)
  * @param input - vector of strings, in which each string is a separate line looking like '0x03000001  0 1883'.
  * @return set of PIDs
  */
-std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input)
+std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input) const
 {
     std::set<int> pid_numbers;
 
@@ -107,7 +107,7 @@ std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input)
  * @param input - result of calling system call
  * @return vector of split output - one string as one line - looking like '0x02000002  0 1315'
  */
-std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::string &input)
+std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::string &input) const
 {
     /* Each line is contained as separate string. */
     std::vector <std::string> output_line;
@@ -148,12 +148,13 @@ void Manager::Start()
 
         //std::this_thread::sleep_for(std::chrono::seconds(1));
         Add_Item(item);
-        std::this_thread::sleep_for(std::chrono::seconds(12));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     //Print_Elapsed_Time();
 
     Save_Statistics_to_File();
+    Load_Statistics_from_File();
 
     /* Send signal to main window to show output on screen */
 
@@ -171,7 +172,7 @@ void Manager::Add_Item(const Item &item)
 }
 
 
-void Manager::Print_Elapsed_Time()
+void Manager::Print_Elapsed_Time() const
 {
     for(auto &object : objects)
     {
@@ -187,7 +188,7 @@ void Manager::Print_Elapsed_Time()
  * @return vector of processes names.
  */
 
-std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_numbers)
+std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_numbers) const
 {
     std::vector<std::string> processes_names;
 
@@ -210,15 +211,17 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
 void Manager::Save_Statistics_to_File()
 {
     file_stats.open(path_to_file, std::fstream::out);
+    if(!file_stats.is_open())
+        throw std::ios_base::failure("Couldn't open a file in order to save statistics: " + path_to_file);
 
     for(auto &object : objects)
     {
         object.second.Stop_Counting_Time();
         object.second.Parse_Time();
-        //file_stats << object.first.name << " ::: " << std::fixed << object.second.time_difference << "\n";
-        file_stats << object.first.name << " ::: " << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
+        file_stats << object.first.name << " ::: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
 
         cout << std::fixed << object.second.time_difference << endl;
+        QApplication::processEvents();
     }
 }
 
@@ -234,18 +237,27 @@ void Manager::Process_Statistics::Parse_Time()
     /* If process was ON more than 60 seconds */
     if(time_difference >= 60.0)
     {
-
-        total_seconds = time_difference;
-        time_difference = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
-        total_minutes = time_difference;
-
-
+        /* If process was ON more than 1 hour */
+        if(time_difference >= 3600.0)
+        {
+            total_seconds = Parse_Seconds();
+            total_minutes = Parse_Minutes();
+            total_hours = std::chrono::duration_cast<Process_Statistics::hours>(end_time - begin_time).count();
+        }
+        /* 1 - 59 MINUTES */
+        else
+        {
+            total_seconds = Parse_Seconds();
+            total_minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
+            total_hours = 0;
+        }
     }
+    /* 0 - 59 SECONDS */
     else
     {
         total_seconds = time_difference;
+        total_minutes = total_hours = 0;
     }
-
 }
 
 
@@ -253,9 +265,49 @@ void Manager::Process_Statistics::Parse_Time()
 void Manager::Process_Statistics::Stop_Counting_Time()
 {
     end_time = Process_Statistics::_clock::now();
+    /* time_difference must be assigned in seconds! Some part of application are based on it. */
     time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
+}
+
+
+int Manager::Process_Statistics::Parse_Minutes() const
+{
+    int minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
+    while(minutes > 59)
+    {
+        minutes = minutes - 60;
+    }
+    return minutes;
+}
+
+int Manager::Process_Statistics::Parse_Seconds() const
+{
+    int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
+    while(seconds > 59)
+    {
+        seconds = seconds - 60;
+    }
+    return seconds;
+}
+
+
+
+void Manager::Load_Statistics_from_File()
+{
+    file_stats.open(path_to_file, std::fstream::in);
+    if(!file_stats.is_open())
+        throw std::ios_base::failure("Couldn't open a file in order to load statistics: " + path_to_file);
+    std::string line;
+
+    while(std::getline(file_stats, line))
+    {
+        cout << "Line: " << line << endl;
+    }
 
 }
+
+
+
 
 
 

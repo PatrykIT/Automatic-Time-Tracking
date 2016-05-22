@@ -35,12 +35,16 @@ private:
         //typedef std::chrono::duration<double, std::ratio<1>> seconds; //It's more precise, but we don't need that much precision.
         typedef std::chrono::seconds seconds;
         typedef std::chrono::minutes minutes;
+        typedef std::chrono::minutes hours;
 
         void Stop_Counting_Time();
         void Parse_Time();
+        int Parse_Minutes() const;
+        int Parse_Seconds() const;
     };
 
     static std::vector<std::pair<Item, Process_Statistics>> objects;
+
     std::fstream file_stats;
     std::string path_to_file = "Statistics.txt";
 
@@ -49,12 +53,13 @@ private:
 private:
     static void Add_Item(const Item &item);
     void Save_Statistics_to_File();
+    void Load_Statistics_from_File();
 
 
-    std::string System_Call(const std::string &command);
-    std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input);
-    std::vector<std::string> Split_Command_Output_to_Strings(const std::string &input);
-    std::vector<std::string> Get_Processes_Names(const std::set<int> &pid_numbers);
+    std::string System_Call(const std::string &command) const;
+    std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input) const;
+    std::vector<std::string> Split_Command_Output_to_Strings(const std::string &input) const;
+    std::vector<std::string> Get_Processes_Names(const std::set<int> &pid_numbers) const;
 
 
 //Methods
@@ -64,7 +69,7 @@ public:
     ~Manager();
 
     void Start();
-    void Print_Elapsed_Time();
+    void Print_Elapsed_Time() const;
 
 
 //Members
