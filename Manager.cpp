@@ -146,9 +146,9 @@ void Manager::Start()
         /* TO DO: Add retrieving icons from system. */
         item.Set_Icon("/home/patryk/QT Projects/Manic LTime/HeavyRain.png");
 
-        //std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        //std::this_thread::sleep_for(std::chrono::minutes(1));
         Add_Item(item);
-        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     //Print_Elapsed_Time();
@@ -220,9 +220,9 @@ void Manager::Save_Statistics_to_File()
         object.second.Parse_Time();
         file_stats << object.first.name << " ::: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
 
-        cout << std::fixed << object.second.time_difference << endl;
-        QApplication::processEvents();
+        //cout << std::fixed << object.second.time_difference << endl;
     }
+    file_stats.close();
 }
 
 
@@ -265,7 +265,7 @@ void Manager::Process_Statistics::Parse_Time()
 void Manager::Process_Statistics::Stop_Counting_Time()
 {
     end_time = Process_Statistics::_clock::now();
-    /* time_difference must be assigned in seconds! Some part of application are based on it. */
+    /* time_difference must be assigned in seconds! Some parts of application are based on it. */
     time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
 }
 
@@ -297,14 +297,69 @@ void Manager::Load_Statistics_from_File()
     file_stats.open(path_to_file, std::fstream::in);
     if(!file_stats.is_open())
         throw std::ios_base::failure("Couldn't open a file in order to load statistics: " + path_to_file);
+
     std::string line;
 
     while(std::getline(file_stats, line))
     {
         cout << "Line: " << line << endl;
+        Parse_File_Statistics(line);
+
     }
 
 }
+
+/**
+ * @brief We want to parse the string (one line from file) to get time (separately hour, minute, seconde).
+ * @param line - looks like 'chrome ::: 0:24:35'.
+ */
+
+void Manager::Parse_File_Statistics(std::string &line)
+{
+    std::vector<int> time;
+    time.reserve(3);
+    int hours, minutes, secondes;
+
+    /* Finds position in string where time starts. */
+    for(std::string::iterator string_iterator = line.begin(); string_iterator != line.end(); ++string_iterator)
+    {
+        if(*string_iterator == ':' && *(string_iterator +1) == ':' && *(string_iterator +2) == ':')
+        {
+            for(std::string::iterator time_iterator =  string_iterator + 4; time_iterator != line.end(); ++time_iterator)
+            {
+                /* If unit of time is a single digit. */
+                if (*(time_iterator + 1) == ':'  || (time_iterator + 1) == line.end())
+                {
+                    time.push_back(static_cast<int> (*time_iterator) - 48);
+                   time_iterator++; //This makes time iterator point to semicolon. When loop makes another iteration it will land after semicolon, which is what we want.
+                   if(time_iterator == line.end())
+                    break;
+                }
+                /* If unit of time is a double digit. */
+                else if(*(time_iterator + 2) == ':' || (time_iterator + 2) == line.end())
+                {
+                    std::string double_time_value = "";
+                    double_time_value += *time_iterator; /* First digit */
+                    double_time_value += *(time_iterator + 1); /* Second digit */
+                    time.push_back(std::stoi(double_time_value));
+
+                    time_iterator += 2;
+                    if(time_iterator == line.end())
+                        break;
+                }
+            }
+            hours = time.at(0);
+            minutes = time.at(1);
+            secondes = time.at(2);
+            cout << "Time: " << hours << " " << minutes << " " << secondes << endl;
+            return;
+        }
+    }
+}
+
+
+
+
 
 
 

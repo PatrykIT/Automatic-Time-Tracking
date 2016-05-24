@@ -97,7 +97,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
                                                                       QMessageBox::Yes | QMessageBox::No);
     if(question_exit == QMessageBox::Yes)
     {
-        //Save time stats
+        //TO DO: Save time stats
         event->accept();
     }
     else

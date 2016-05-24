@@ -14,6 +14,6 @@ int main(int argc, char *argv[])
 }
 
 /*
- * 1.
+ * 1. Finish Load_Statistics_from_File()
  * 2. Add error codes / throwing if regex fails.
 */

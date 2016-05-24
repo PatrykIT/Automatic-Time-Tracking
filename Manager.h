@@ -54,6 +54,7 @@ private:
     static void Add_Item(const Item &item);
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
+    void Parse_File_Statistics(std::string &line);
 
 
     std::string System_Call(const std::string &command) const;
