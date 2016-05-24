@@ -9,6 +9,7 @@
 //C++ includes
 #include <thread> //sleep_for
 #include <iostream>
+#include <sstream>
 
 using std::cout;
 using std::endl;
@@ -20,8 +21,23 @@ Manager::Manager(QObject *parent) : QObject(parent)
     objects.reserve(128);
 }
 
+Manager::~Manager()
+{
+
+}
+
 Manager::Process_Statistics::Process_Statistics() : total_hours(0), total_minutes(0), total_seconds(0),
     begin_time(Process_Statistics::_clock::now())
+{ }
+
+Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seconds)
+    : total_hours(hours), total_minutes(minutes), total_seconds(seconds),
+    begin_time(Process_Statistics::_clock::now())
+{ }
+
+Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
+    : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
+      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference)
 { }
 
 Manager::Process_Statistics::~Process_Statistics()
@@ -30,15 +46,8 @@ Manager::Process_Statistics::~Process_Statistics()
     time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
 }
 
-Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
-    : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
-      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference)
-{ }
 
-Manager::~Manager()
-{
 
-}
 
 /**
  * @brief System_Call
@@ -130,45 +139,41 @@ std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::str
 
 void Manager::Start()
 {
-    std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
-    std::string system_call_result = System_Call(command);
-
-    std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
-    std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
-    std::vector<std::string> processes_names = Get_Processes_Names(pid_numbers);
-
-    /* Create Items out of processes names */
-    for(auto &process : processes_names)
+    try
     {
-        Item item;
-        item.name = process;
+        std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
+        std::string system_call_result = System_Call(command);
 
-        /* TO DO: Add retrieving icons from system. */
-        item.Set_Icon("/home/patryk/QT Projects/Manic LTime/HeavyRain.png");
+        std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
+        std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
+        std::vector<std::string> processes_names = Get_Processes_Names(pid_numbers);
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        //std::this_thread::sleep_for(std::chrono::minutes(1));
-        Add_Item(item);
+        Load_Statistics_from_File();
+
+        for(const auto &object : objects)
+            cout << "Object: " << object.first.name << " | Time: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << endl;
+
+        //Print_Elapsed_Time();
+
+        //Save_Statistics_to_File();
+
+        /* Send signal to main window to show output on screen */
     }
-
-    //Print_Elapsed_Time();
-
-    Save_Statistics_to_File();
-    Load_Statistics_from_File();
-
-    /* Send signal to main window to show output on screen */
+    catch(std::ios_base::failure &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+    }
+    catch (...)
+    {
+        qDebug() << "Unknow exception caught.";
+    }
 
 }
 
 
-
-
-
-void Manager::Add_Item(const Item &item)
+void Manager::Add_Item(const Item &item, Process_Statistics time_stats)
 {
-    //Can we make this function one-liner?
-    Process_Statistics tmp;
-    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, tmp));
+    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, time_stats));
 }
 
 
@@ -290,7 +295,9 @@ int Manager::Process_Statistics::Parse_Seconds() const
     return seconds;
 }
 
-
+/**
+ * @brief Loads name of processess with theirs time, stores those information in tuple, creates Item and Process_Statistics objects based on those informations and calls Add_Item().
+ */
 
 void Manager::Load_Statistics_from_File()
 {
@@ -302,9 +309,18 @@ void Manager::Load_Statistics_from_File()
 
     while(std::getline(file_stats, line))
     {
-        cout << "Line: " << line << endl;
-        Parse_File_Statistics(line);
+        if(line.size() > 0)
+        {
+            /* Name of process, hours, minutes, seconds */
+            std::tuple<std::string, int, int, int> process_information (Parse_File_Statistics(line));
 
+            Item item(std::move (std::get<0>(process_information) ));
+            Process_Statistics statistics(std::get<1>(process_information), std::get<2>(process_information), std::get<3>(process_information));
+
+            Add_Item(item, statistics);
+        }
+        else
+            cout << "Line empty." << endl;
     }
 
 }
@@ -314,22 +330,30 @@ void Manager::Load_Statistics_from_File()
  * @param line - looks like 'chrome ::: 0:24:35'.
  */
 
-void Manager::Parse_File_Statistics(std::string &line)
+std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std::string &line) const
 {
+   std::stringstream line_stream (line);
+   std::string name_of_process;
+   /* Save first word from line, which is always a process name. */
+   line_stream >> name_of_process;
+
     std::vector<int> time;
     time.reserve(3);
     int hours, minutes, secondes;
 
     /* Finds position in string where time starts. */
-    for(std::string::iterator string_iterator = line.begin(); string_iterator != line.end(); ++string_iterator)
+    for(std::string::const_iterator string_iterator = line.begin(); string_iterator != line.end(); ++string_iterator)
     {
+        /* Check for ':::' After this (and whitespace) will be time */
         if(*string_iterator == ':' && *(string_iterator +1) == ':' && *(string_iterator +2) == ':')
         {
-            for(std::string::iterator time_iterator =  string_iterator + 4; time_iterator != line.end(); ++time_iterator)
+            /* string_iterator + 3 would point to a whitespace, so skip it */
+            for(std::string::const_iterator time_iterator =  string_iterator + 4; time_iterator != line.end(); ++time_iterator)
             {
                 /* If unit of time is a single digit. */
                 if (*(time_iterator + 1) == ':'  || (time_iterator + 1) == line.end())
                 {
+                    /* Convert char to number */
                     time.push_back(static_cast<int> (*time_iterator) - 48);
                    time_iterator++; //This makes time iterator point to semicolon. When loop makes another iteration it will land after semicolon, which is what we want.
                    if(time_iterator == line.end())
@@ -341,6 +365,7 @@ void Manager::Parse_File_Statistics(std::string &line)
                     std::string double_time_value = "";
                     double_time_value += *time_iterator; /* First digit */
                     double_time_value += *(time_iterator + 1); /* Second digit */
+                    /* Convert 2digit string to number */
                     time.push_back(std::stoi(double_time_value));
 
                     time_iterator += 2;
@@ -351,10 +376,12 @@ void Manager::Parse_File_Statistics(std::string &line)
             hours = time.at(0);
             minutes = time.at(1);
             secondes = time.at(2);
-            cout << "Time: " << hours << " " << minutes << " " << secondes << endl;
-            return;
+            //cout << "Time: " << hours << " " << minutes << " " << secondes << endl;
+
+            return std::make_tuple(name_of_process, hours, minutes, secondes);
         }
     }
+    throw std::ios_base::failure("Couldn't find matching pattern - :::");
 }
 
 

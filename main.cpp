@@ -9,11 +9,10 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
 
-
     return a.exec();
 }
 
 /*
- * 1. Finish Load_Statistics_from_File()
+ * 1. Finished at void Manager::Load_Statistics_from_File(). Continue this. Continue Start()
  * 2. Add error codes / throwing if regex fails.
 */

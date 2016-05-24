@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iostream>
 #include <fstream>
+#include <tuple>
 
 class Item;
 class Manager : public QObject
@@ -19,6 +20,7 @@ private:
     {
         Process_Statistics();
         ~Process_Statistics();
+        Process_Statistics(int hours, int minutes, int seconds);
         Process_Statistics(const Process_Statistics &statistics);
         int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
 
@@ -51,10 +53,10 @@ private:
 
 //Methods
 private:
-    static void Add_Item(const Item &item);
+    static void Add_Item(const Item &item, Process_Statistics time_stats);
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
-    void Parse_File_Statistics(std::string &line);
+    std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const;
 
 
     std::string System_Call(const std::string &command) const;

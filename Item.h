@@ -19,6 +19,8 @@ private:
 public:
     Item(const Item &rhs);
     Item();
+    Item(const std::__cxx11::string &name);
+    Item(std::string &&name);
 
 public:
 //    bool operator < (const Item &rhs) const
