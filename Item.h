@@ -15,20 +15,13 @@ private:
 private:
     void Set_Icon(QString path);
 
-
 public:
-    Item(const Item &rhs);
     Item();
-    Item(const std::__cxx11::string &name);
-    Item(std::string &&name);
+    explicit Item(const std::string &name);
+    explicit Item(std::string &&name);
+    Item(const Item &rhs);
 
 public:
-//    bool operator < (const Item &rhs) const
-//    {
-//        return true; //We do not care about order in std::map, so let's save on comparing strings.
-//    }
-
-    static int ID;
 
 signals:
 

@@ -27,17 +27,17 @@ Manager::~Manager()
 }
 
 Manager::Process_Statistics::Process_Statistics() : total_hours(0), total_minutes(0), total_seconds(0),
-    begin_time(Process_Statistics::_clock::now())
+    begin_time(Process_Statistics::_clock::now()), is_running(true)
 { }
 
 Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seconds)
     : total_hours(hours), total_minutes(minutes), total_seconds(seconds),
-    begin_time(Process_Statistics::_clock::now())
+    begin_time(Process_Statistics::_clock::now()), is_running(true)
 { }
 
 Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
     : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
-      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference)
+      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference), is_running(statistics.is_running)
 { }
 
 Manager::Process_Statistics::~Process_Statistics()
@@ -47,12 +47,66 @@ Manager::Process_Statistics::~Process_Statistics()
 }
 
 
+void Manager::Start()
+{
+    try
+    {
+        /* Add processes from file */
+        Load_Statistics_from_File();
 
+        std::vector<std::string> processes_names = Observe();
+
+        Check_if_Applications_are_Running(processes_names);
+
+        Add_New_Observed_Objects(processes_names);
+
+        /* Observe if there are new processes, and if old ones are still ON. */
+        int i = 0;
+        while(i < 20)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            processes_names = Observe();
+            /* Two-way check.
+             * 1: Check if items (names) in vector<objects> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
+             * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<objects>). If not, add them to observer.
+             * */
+
+            /* 1-way check */
+            Check_if_Applications_are_Running(processes_names);
+
+            /* 2-way check */
+            Add_New_Observed_Objects(processes_names);
+
+
+            ++i;
+        }
+
+        Save_Statistics_to_File();
+    }
+    catch(std::ios_base::failure &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+    }
+    catch (...)
+    {
+        qDebug() << "Unknow exception caught.";
+    }
+}
+
+std::vector<std::string> Manager::Observe()
+{
+    std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
+    std::string system_call_result = System_Call(command);
+
+    std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
+    std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
+    return Get_Processes_Names(pid_numbers);
+}
 
 /**
  * @brief System_Call
  * @param command - command name to be called
- * @return whole output of command call looking like '"0x02000002  0 131\n0x02000007  0 131\n0x0200000c  0 131\n"'
+ * @return whole output of command call
  */
 std::string Manager::System_Call(const std::string &command) const
 {
@@ -137,56 +191,6 @@ std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::str
     return output_line;
 }
 
-void Manager::Start()
-{
-    try
-    {
-        std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
-        std::string system_call_result = System_Call(command);
-
-        std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
-        std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
-        std::vector<std::string> processes_names = Get_Processes_Names(pid_numbers);
-
-        Load_Statistics_from_File();
-
-        for(const auto &object : objects)
-            cout << "Object: " << object.first.name << " | Time: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << endl;
-
-        //Print_Elapsed_Time();
-
-        //Save_Statistics_to_File();
-
-        /* Send signal to main window to show output on screen */
-    }
-    catch(std::ios_base::failure &exception)
-    {
-        qDebug() << "Exception caught: " << exception.what();
-    }
-    catch (...)
-    {
-        qDebug() << "Unknow exception caught.";
-    }
-
-}
-
-
-void Manager::Add_Item(const Item &item, Process_Statistics time_stats)
-{
-    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, time_stats));
-}
-
-
-void Manager::Print_Elapsed_Time() const
-{
-    for(auto &object : objects)
-    {
-        object.second.Stop_Counting_Time();
-        qDebug() << QString::fromStdString(object.first.name) << ": " << QString::number(object.second.time_difference);
-    }
-}
-
-
 /**
  * @brief Calls 'ps' syscall to get processes names based on their PIDs.
  * @param pid_numbers - PIDs to be translated to names of processes.
@@ -211,6 +215,65 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
     return processes_names;
 }
 
+void Manager::Add_Item_to_Observe(const Item &item, Process_Statistics time_stats)
+{
+    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, time_stats));
+}
+
+void Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
+{
+    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (std::move(item), std::move(time_stats)));
+}
+
+void Manager::Print_Elapsed_Time() const
+{
+    for(auto &object : objects)
+    {
+        object.second.Stop_Counting_Time();
+        qDebug() << QString::fromStdString(object.first.name) << ": " << QString::number(object.second.time_difference);
+    }
+}
+
+void Manager::Check_if_Applications_are_Running(std::vector<std::string> &processes_names)
+{
+    for(auto &item : objects)
+    {
+        /* If application was being observed, but now it is OFF. */
+        if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) == processes_names.end())
+        {
+            cout << item.first.name << " was being observed, but now it is off." << endl << endl;
+            item.second.Stop_Counting_Time();
+            item.second.is_running = false;
+        }
+
+        /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
+        if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) != processes_names.end())
+        {
+            if(item.second.is_running == false)
+                item.second.is_running = true;
+            //Add start counting time(). We must make restart counting for those objects.
+            // !!!
+            // !!!
+        }
+    }
+}
+
+void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names)
+{
+    for(auto &name : processes_names)
+    {
+        /* Check if process currently running is in our observer vector 'objects'. If not, add it for counting time. */
+        if(std::find_if(objects.begin(), objects.end(), [name](std::pair<Item, Manager::Process_Statistics> rhs) { return name == rhs.first.name; }) == objects.end())
+        {
+            /* Add new process */
+            Item item(std::move(name));
+            Process_Statistics tmp;
+
+            cout << "Adding new item: " << item.name << endl << endl;
+            Add_Item_to_Observe(std::move(item), std::move(tmp));
+        }
+    }
+}
 
 
 void Manager::Save_Statistics_to_File()
@@ -221,78 +284,15 @@ void Manager::Save_Statistics_to_File()
 
     for(auto &object : objects)
     {
-        object.second.Stop_Counting_Time();
+        if(object.second.is_running)
+            object.second.Stop_Counting_Time();
+
         object.second.Parse_Time();
         file_stats << object.first.name << " ::: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
 
-        //cout << std::fixed << object.second.time_difference << endl;
+        //cout << std::fixed << object.first.name << endl;
     }
     file_stats.close();
-}
-
-
-
-
-void Manager::Process_Statistics::Parse_Time()
-{
-
-    Stop_Counting_Time();
-    /* TO DO: Make asserts, that time_difference at the beginning of this function is of type chrono::seconds */
-
-    /* If process was ON more than 60 seconds */
-    if(time_difference >= 60.0)
-    {
-        /* If process was ON more than 1 hour */
-        if(time_difference >= 3600.0)
-        {
-            total_seconds = Parse_Seconds();
-            total_minutes = Parse_Minutes();
-            total_hours = std::chrono::duration_cast<Process_Statistics::hours>(end_time - begin_time).count();
-        }
-        /* 1 - 59 MINUTES */
-        else
-        {
-            total_seconds = Parse_Seconds();
-            total_minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
-            total_hours = 0;
-        }
-    }
-    /* 0 - 59 SECONDS */
-    else
-    {
-        total_seconds = time_difference;
-        total_minutes = total_hours = 0;
-    }
-}
-
-
-
-void Manager::Process_Statistics::Stop_Counting_Time()
-{
-    end_time = Process_Statistics::_clock::now();
-    /* time_difference must be assigned in seconds! Some parts of application are based on it. */
-    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
-}
-
-
-int Manager::Process_Statistics::Parse_Minutes() const
-{
-    int minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
-    while(minutes > 59)
-    {
-        minutes = minutes - 60;
-    }
-    return minutes;
-}
-
-int Manager::Process_Statistics::Parse_Seconds() const
-{
-    int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
-    while(seconds > 59)
-    {
-        seconds = seconds - 60;
-    }
-    return seconds;
 }
 
 /**
@@ -303,7 +303,7 @@ void Manager::Load_Statistics_from_File()
 {
     file_stats.open(path_to_file, std::fstream::in);
     if(!file_stats.is_open())
-        throw std::ios_base::failure("Couldn't open a file in order to load statistics: " + path_to_file);
+        return; //File doesn't exists. Either it was first time the user run an app, and there is nothing to load from, or it was deleted.
 
     std::string line;
 
@@ -311,23 +311,100 @@ void Manager::Load_Statistics_from_File()
     {
         if(line.size() > 0)
         {
-            /* Name of process, hours, minutes, seconds */
+            /* <Name of process, hours, minutes, seconds> */
             std::tuple<std::string, int, int, int> process_information (Parse_File_Statistics(line));
 
             Item item(std::move (std::get<0>(process_information) ));
             Process_Statistics statistics(std::get<1>(process_information), std::get<2>(process_information), std::get<3>(process_information));
 
-            Add_Item(item, statistics);
+            Add_Item_to_Observe(std::move(item), std::move(statistics));
         }
         else
-            cout << "Line empty." << endl;
+            qDebug() << "Line empty.";
     }
+    file_stats.close();
+}
 
+
+
+void Manager::Process_Statistics::Parse_Time()
+{
+
+    //Stop_Counting_Time(); //This function shouldn't be here. We should call it when program detaches, and at the end of our program, if given program is still ON.
+
+//    /* If process was ON more than 60 seconds */
+//    if(time_difference >= 60.0)
+//    {
+//        /* If process was ON more than 1 hour */
+//        if(time_difference >= 3600.0)
+//        {
+//            total_seconds = Parse_Seconds();
+//            total_minutes = Parse_Minutes();
+//            total_hours = Parse_Hours();
+//        }
+//        /* 1 - 59 MINUTES */
+//        else
+//        {
+//            total_seconds = Parse_Seconds();
+//            total_minutes = Parse_Minutes();
+//            //total_hours = 0;
+//        }
+//    }
+//    /* 0 - 59 SECONDS */
+//    else
+//    {
+//        total_seconds = time_difference;
+//        total_minutes = total_hours = 0;
+//    }
+    total_seconds = Parse_Seconds();
+    total_minutes = Parse_Minutes();
+    total_hours = Parse_Hours();
+}
+
+
+void Manager::Process_Statistics::Stop_Counting_Time()
+{
+    end_time = Process_Statistics::_clock::now();
+    /* time_difference MUST BE assigned in seconds! Some parts of application are based on it. */
+    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
+}
+
+
+int Manager::Process_Statistics::Parse_Minutes() const
+{
+    int minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
+    minutes += total_minutes;
+
+    while(minutes > 59)
+    {
+        minutes = minutes - 60;
+    }
+    return minutes;
+}
+
+int Manager::Process_Statistics::Parse_Seconds() const
+{
+    int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
+    seconds += total_seconds;
+
+    while(seconds > 59)
+    {
+        seconds = seconds - 60;
+    }
+    return seconds;
+}
+
+int Manager::Process_Statistics::Parse_Hours() const
+{
+    int hours = std::chrono::duration_cast<Process_Statistics::hours>(end_time - begin_time).count();
+    hours += total_hours;
+    return hours;
 }
 
 /**
  * @brief We want to parse the string (one line from file) to get time (separately hour, minute, seconde).
  * @param line - looks like 'chrome ::: 0:24:35'.
+ * @return a tuple, that consists of name, hours, minutes, seconds.
  */
 
 std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std::string &line) const

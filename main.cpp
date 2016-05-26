@@ -13,6 +13,6 @@ int main(int argc, char *argv[])
 }
 
 /*
- * 1. Finished at void Manager::Load_Statistics_from_File(). Continue this. Continue Start()
+ * 1. Manager.cpp line 250. Add start counting time when app was restarted. Test if all works.
  * 2. Add error codes / throwing if regex fails.
 */

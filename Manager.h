@@ -43,6 +43,9 @@ private:
         void Parse_Time();
         int Parse_Minutes() const;
         int Parse_Seconds() const;
+        int Parse_Hours() const;
+
+        bool is_running;
     };
 
     static std::vector<std::pair<Item, Process_Statistics>> objects;
@@ -53,12 +56,16 @@ private:
 
 //Methods
 private:
-    static void Add_Item(const Item &item, Process_Statistics time_stats);
+    static void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats);
+    static void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
+
+    void Check_if_Applications_are_Running(std::vector<std::string> &processes_names);
+    void Add_New_Observed_Objects(std::vector<std::string> &processes_names);
+    std::vector<std::string> Observe();
+
     std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const;
-
-
     std::string System_Call(const std::string &command) const;
     std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input) const;
     std::vector<std::string> Split_Command_Output_to_Strings(const std::string &input) const;
@@ -85,6 +92,3 @@ public slots:
 
 #endif // MANAGER_H
 
-/* Start_Counting_Time() will only set variables that tell at what time was the function started.
- * The Stop_Counting_Time() will retrieve this values, get new, and calculate difference.
- * Difference will be saved in Time Statistics.*/

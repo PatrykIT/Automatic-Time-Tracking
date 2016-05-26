@@ -1,11 +1,8 @@
 #include "Item.h"
 
-int Item::ID = 0;
 
 Item::Item()
-{
-    ID = ID++;
-}
+{ icon = std::make_shared<QPixmap>("/home/patryk/QT Projects/Manic LTime/HeavyRain.png"); }
 
 Item::Item(const std::string &name) : name(name)
 { icon = std::make_shared<QPixmap>("/home/patryk/QT Projects/Manic LTime/HeavyRain.png"); }
