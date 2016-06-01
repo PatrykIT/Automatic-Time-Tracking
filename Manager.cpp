@@ -365,7 +365,7 @@ void Manager::Process_Statistics::Parse_Time()
 //        total_seconds = time_difference;
 //        total_minutes = total_hours = 0;
 //    }
-    total_seconds = Parse_Seconds(); // += in case application was ON, then switched OFF, and then stwiched ON again. So we must store time.
+    total_seconds = Parse_Seconds();
     total_minutes = Parse_Minutes();
     total_hours = Parse_Hours();
 }
