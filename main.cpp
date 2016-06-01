@@ -13,6 +13,6 @@ int main(int argc, char *argv[])
 }
 
 /*
- * 1. Manager.cpp line 250. Add start counting time when app was restarted. Test if all works.
+ * 1. Make strong log files. Write after each iteration each container's values, output of ps and wmctrl output.
  * 2. Add error codes / throwing if regex fails.
 */

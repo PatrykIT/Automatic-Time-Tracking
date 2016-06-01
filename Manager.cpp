@@ -54,7 +54,9 @@ void Manager::Start()
         /* Add processes from file */
         Load_Statistics_from_File();
 
-        std::vector<std::string> processes_names = Observe();
+        std::vector<std::string> processes_names;
+        processes_names.reserve(128);
+        processes_names = Observe();
 
         Check_if_Applications_are_Running(processes_names);
 
@@ -62,7 +64,7 @@ void Manager::Start()
 
         /* Observe if there are new processes, and if old ones are still ON. */
         int i = 0;
-        while(i < 20)
+        while(i < 60)
         {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             processes_names = Observe();
@@ -82,6 +84,7 @@ void Manager::Start()
         }
 
         Save_Statistics_to_File();
+        cout << "My work is done." << endl;
     }
     catch(std::ios_base::failure &exception)
     {
@@ -238,22 +241,28 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
 {
     for(auto &item : objects)
     {
-        /* If application was being observed, but now it is OFF. */
+        /* If application was being observed (or was saved in statistics file), but now it is OFF. */
         if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) == processes_names.end())
         {
-            cout << item.first.name << " was being observed, but now it is off." << endl << endl;
-            item.second.Stop_Counting_Time();
-            item.second.is_running = false;
+            if(item.second.is_running)
+            {
+                cout << item.first.name << " was being observed, but now it is off." << endl << endl;
+                item.second.Stop_Counting_Time();
+                item.second.Parse_Time();
+                item.second.is_running = false;
+            }
         }
 
         /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
         if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) != processes_names.end())
         {
             if(item.second.is_running == false)
+            {
+                cout << "Application: " << item.first.name << " was restarted." << endl;
                 item.second.is_running = true;
-            //Add start counting time(). We must make restart counting for those objects.
-            // !!!
-            // !!!
+                /* Start counting time again. */
+                item.second.begin_time = Process_Statistics::_clock::now();
+            }
         }
     }
 }
@@ -356,7 +365,7 @@ void Manager::Process_Statistics::Parse_Time()
 //        total_seconds = time_difference;
 //        total_minutes = total_hours = 0;
 //    }
-    total_seconds = Parse_Seconds();
+    total_seconds = Parse_Seconds(); // += in case application was ON, then switched OFF, and then stwiched ON again. So we must store time.
     total_minutes = Parse_Minutes();
     total_hours = Parse_Hours();
 }
@@ -372,6 +381,7 @@ void Manager::Process_Statistics::Stop_Counting_Time()
 
 int Manager::Process_Statistics::Parse_Minutes() const
 {
+    /* TO DO: Should use time_difference instead of calculating what already has been calculated. */
     int minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
     minutes += total_minutes;
 
