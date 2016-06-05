@@ -10,6 +10,8 @@
 #include <tuple>
 
 class Item;
+
+
 class Manager : public QObject
 {
     Q_OBJECT
@@ -51,7 +53,7 @@ private:
     static std::vector<std::pair<Item, Process_Statistics>> objects;
 
     std::fstream file_stats;
-    std::string path_to_file = "Statistics.txt";
+    std::string path_to_stats_file = "Statistics.txt";
 
 
 //Methods
@@ -60,6 +62,7 @@ private:
     static void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
+    void LOGS(const std::string& info) const;
 
     void Check_if_Applications_are_Running(std::vector<std::string> &processes_names);
     void Add_New_Observed_Objects(std::vector<std::string> &processes_names);
@@ -72,6 +75,10 @@ private:
     std::vector<std::string> Get_Processes_Names(const std::set<int> &pid_numbers) const;
 
 
+//Members
+public:
+
+
 //Methods
 public:
     explicit Manager(QObject *parent = 0);
@@ -82,8 +89,6 @@ public:
     void Print_Elapsed_Time() const;
 
 
-//Members
-public:
 
 signals:
 

@@ -10,6 +10,8 @@
 #include <thread> //sleep_for
 #include <iostream>
 #include <sstream>
+#include <mutex>
+#include <ctime>
 
 using std::cout;
 using std::endl;
@@ -56,31 +58,29 @@ void Manager::Start()
 
         std::vector<std::string> processes_names;
         processes_names.reserve(128);
-        processes_names = Observe();
 
-        Check_if_Applications_are_Running(processes_names);
-
-        Add_New_Observed_Objects(processes_names);
-
+        int counter = 0;
         /* Observe if there are new processes, and if old ones are still ON. */
-        int i = 0;
-        while(i < 60)
+        while(counter < 10)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
             processes_names = Observe();
-            /* Two-way check.
-             * 1: Check if items (names) in vector<objects> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
-             * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<objects>). If not, add them to observer.
-             * */
 
-            /* 1-way check */
-            Check_if_Applications_are_Running(processes_names);
+            if(!processes_names.empty())
+            {
+                /* Two-way check.
+                 * 1: Check if items (names) in vector<objects> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
+                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<objects>). If not, add them to observer.
+                 * */
 
-            /* 2-way check */
-            Add_New_Observed_Objects(processes_names);
+                /* 1-way check */
+                Check_if_Applications_are_Running(processes_names);
+                /* 2-way check */
+                Add_New_Observed_Objects(processes_names);
 
-
-            ++i;
+                LOGS("\n");
+                ++counter;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         Save_Statistics_to_File();
@@ -98,11 +98,29 @@ void Manager::Start()
 
 std::vector<std::string> Manager::Observe()
 {
-    std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,6\\}'";
+    std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,8\\}'";
     std::string system_call_result = System_Call(command);
+    //LOGS("wmctrl output: " + system_call_result);
+
+    if(system_call_result.empty())
+    {
+        //LOGS("ERROR! Wmctrl output is empty.");
+        /* Return an empty vector. */
+        return std::vector<std::string>();
+    }
 
     std::vector<std::string> strings_split = Split_Command_Output_to_Strings(system_call_result);
     std::set<int> pid_numbers = Get_PIDs_from_Strings(strings_split);
+
+    for(std::set<int>::iterator it = pid_numbers.begin(); it != pid_numbers.end(); ++it)
+    {
+        /* Sometimes wmctrl will give process ID 0, which is an error. So we are getting rid of it. */
+        if(*it == 0)
+        {
+            pid_numbers.erase(it);
+        }
+    }
+
     return Get_Processes_Names(pid_numbers);
 }
 
@@ -203,18 +221,29 @@ std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::str
 std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_numbers) const
 {
     std::vector<std::string> processes_names;
+    //std::string log_string = "";
 
     /* Call 'ps' syscall to get processes names based on their PIDs */
     for(auto it = pid_numbers.begin(); it != pid_numbers.end(); ++it)
     {
         /* TO DO: Add nicer way of calling function (got hint on e-mail) */
         std::string process_name = System_Call("ps -p " + std::to_string(*it) + " -o comm=");
+
+        /* If output is bad, ignore it. */
+        if(process_name.empty() || process_name.back() != '\n')
+        {
+            //log_string.append(" " + std::string("ERROR! Process doesn't have a newline at the end or is empty. Pid number: ") + std::to_string(*it));
+            continue;
+        }
         /* Remove new line from the end of string. */
-        process_name.erase(std::remove(process_name.begin(), process_name.end(), '\n')); //We could have called .pop_back(), more efficient, but less readable.
+        process_name.pop_back();
+
+        //log_string.append(" " + process_name);
 
         processes_names.emplace_back(std::move(process_name));
     }
 
+    //LOGS("ps output: " + log_string);
     return processes_names;
 }
 
@@ -287,9 +316,9 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
 
 void Manager::Save_Statistics_to_File()
 {
-    file_stats.open(path_to_file, std::fstream::out);
+    file_stats.open(path_to_stats_file, std::fstream::out);
     if(!file_stats.is_open())
-        throw std::ios_base::failure("Couldn't open a file in order to save statistics: " + path_to_file);
+        throw std::ios_base::failure("Couldn't open a file in order to save statistics: " + path_to_stats_file);
 
     for(auto &object : objects)
     {
@@ -310,7 +339,7 @@ void Manager::Save_Statistics_to_File()
 
 void Manager::Load_Statistics_from_File()
 {
-    file_stats.open(path_to_file, std::fstream::in);
+    file_stats.open(path_to_stats_file, std::fstream::in);
     if(!file_stats.is_open())
         return; //File doesn't exists. Either it was first time the user run an app, and there is nothing to load from, or it was deleted.
 
@@ -472,10 +501,29 @@ std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std:
 }
 
 
+std::once_flag Debug_Date_Once;
 
+void Manager::LOGS(const std::__cxx11::string &info) const
+{
+    static std::fstream log_file;
+    static std::string path_to_log_file = "Logs.txt";
 
+    log_file.open(path_to_log_file, std::fstream::out | std::fstream::app);
 
+    std::call_once(Debug_Date_Once, [this] ()
+    {
+        /* Get current time */
+        time_t t = time(0);
+        struct tm * now = localtime(&t);
 
+        /* Cast time to string */
+        char *date = ctime(&t);
+        log_file << "\t\t\t\t\t" << date;
+    } );
+
+    log_file << info << endl;
+    log_file.close();
+}
 
 
 
