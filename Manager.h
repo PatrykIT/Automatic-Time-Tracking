@@ -23,8 +23,16 @@ private:
         Process_Statistics();
         ~Process_Statistics();
         Process_Statistics(int hours, int minutes, int seconds);
+
         Process_Statistics(const Process_Statistics &statistics);
-        int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
+        Process_Statistics(Process_Statistics &&rhs);
+
+        void Stop_Counting_Time();
+        void Parse_Time();
+        int Parse_Minutes();
+        int Parse_Seconds();
+
+
 
         bool operator < (const Process_Statistics &rhs) const
         {
@@ -34,20 +42,16 @@ private:
         typedef std::chrono::high_resolution_clock _clock;
         std::chrono::time_point<_clock> begin_time;
         std::chrono::time_point<_clock> end_time;
+
         double time_difference;
+        int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
+        bool is_running;
 
         //typedef std::chrono::duration<double, std::ratio<1>> seconds; //It's more precise, but we don't need that much precision.
         typedef std::chrono::seconds seconds;
         typedef std::chrono::minutes minutes;
         typedef std::chrono::minutes hours;
 
-        void Stop_Counting_Time();
-        void Parse_Time();
-        int Parse_Minutes() const;
-        int Parse_Seconds() const;
-        int Parse_Hours() const;
-
-        bool is_running;
     };
 
     static std::vector<std::pair<Item, Process_Statistics>> objects;
