@@ -380,39 +380,10 @@ void Manager::Load_Statistics_from_File()
 }
 
 
-
 void Manager::Process_Statistics::Parse_Time()
 {
-
-    //Stop_Counting_Time(); //This function shouldn't be here. We should call it when program detaches, and at the end of our program, if given program is still ON.
-
-//    /* If process was ON more than 60 seconds */
-//    if(time_difference >= 60.0)
-//    {
-//        /* If process was ON more than 1 hour */
-//        if(time_difference >= 3600.0)
-//        {
-//            total_seconds = Parse_Seconds();
-//            total_minutes = Parse_Minutes();
-//            total_hours = Parse_Hours();
-//        }
-//        /* 1 - 59 MINUTES */
-//        else
-//        {
-//            total_seconds = Parse_Seconds();
-//            total_minutes = Parse_Minutes();
-//            //total_hours = 0;
-//        }
-//    }
-//    /* 0 - 59 SECONDS */
-//    else
-//    {
-//        total_seconds = time_difference;
-//        total_minutes = total_hours = 0;
-//    }
     total_seconds = Parse_Seconds();
     total_minutes = Parse_Minutes();
-    total_hours = Parse_Hours();
 }
 
 
@@ -423,38 +394,40 @@ void Manager::Process_Statistics::Stop_Counting_Time()
     time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
 }
 
-
-int Manager::Process_Statistics::Parse_Minutes() const
+/**
+ * @brief Counts how long application was ON, in seconds. If seconds > 59, then increments minutes until seconds are in range [0 - 59]
+ * @return Seconds in range [0 - 59] spent in application.
+ */
+int Manager::Process_Statistics::Parse_Seconds()
 {
     /* TO DO: Should use time_difference instead of calculating what already has been calculated. */
-    int minutes = std::chrono::duration_cast<Process_Statistics::minutes>(end_time - begin_time).count();
-    minutes += total_minutes;
-
-    while(minutes > 59)
-    {
-        minutes = minutes - 60;
-    }
-    return minutes;
-}
-
-int Manager::Process_Statistics::Parse_Seconds() const
-{
     int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
     seconds += total_seconds;
 
     while(seconds > 59)
     {
+        ++total_minutes;
         seconds = seconds - 60;
     }
+
     return seconds;
 }
 
-int Manager::Process_Statistics::Parse_Hours() const
+/**
+ * @brief Minutes are set by Parse_Seconds(). If minutes > 59, function increments hours until minutes are in range [0 - 59]
+ * @return Minutes in range [0 - 59] spent in application.
+ */
+int Manager::Process_Statistics::Parse_Minutes()
 {
-    int hours = std::chrono::duration_cast<Process_Statistics::hours>(end_time - begin_time).count();
-    hours += total_hours;
-    return hours;
+    while(total_minutes > 59)
+    {
+        ++total_hours;
+        total_minutes = total_minutes - 60;
+    }
+
+    return total_minutes;
 }
+
 
 /**
  * @brief We want to parse the string (one line from file) to get time (separately hour, minute, seconde).
