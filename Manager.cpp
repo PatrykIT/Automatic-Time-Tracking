@@ -29,17 +29,21 @@ Manager::~Manager()
 }
 
 Manager::Process_Statistics::Process_Statistics() : total_hours(0), total_minutes(0), total_seconds(0),
-    begin_time(Process_Statistics::_clock::now()), is_running(true)
+    begin_time(Process_Statistics::_clock::now()), end_time((Process_Statistics::_clock::now())), is_running(true)
 { }
 
 Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seconds)
     : total_hours(hours), total_minutes(minutes), total_seconds(seconds),
-    begin_time(Process_Statistics::_clock::now()), is_running(true)
+    begin_time(Process_Statistics::_clock::now()), end_time((Process_Statistics::_clock::now())), is_running(true)
 { }
 
 Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
     : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
       begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference), is_running(statistics.is_running)
+{ }
+
+Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
+    total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds), time_difference(rhs.time_difference), is_running(rhs.is_running)
 { }
 
 Manager::Process_Statistics::~Process_Statistics()
@@ -61,7 +65,7 @@ void Manager::Start()
 
         int counter = 0;
         /* Observe if there are new processes, and if old ones are still ON. */
-        while(counter < 10)
+        while(counter < 5)
         {
             processes_names = Observe();
 
@@ -77,7 +81,7 @@ void Manager::Start()
                 /* 2-way check */
                 Add_New_Observed_Objects(processes_names);
 
-                LOGS("\n");
+                //LOGS("\n");
                 ++counter;
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -89,10 +93,21 @@ void Manager::Start()
     catch(std::ios_base::failure &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
+        LOGS(std::string("ERROR! ios_base::failure exception caught: ") + exception.what());
+        //Save Time
     }
+    catch(std::runtime_error &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //Save Time
+    }
+
     catch (...)
     {
         qDebug() << "Unknow exception caught.";
+        LOGS("ERROR! Unknow exception.");
+        //Save Time
     }
 }
 
@@ -125,24 +140,26 @@ std::vector<std::string> Manager::Observe()
 }
 
 /**
- * @brief System_Call
+ * @brief Executes shell comand.
  * @param command - command name to be called
  * @return whole output of command call
  */
 std::string Manager::System_Call(const std::string &command) const
 {
-    char buffer[1024]; /* TO DO: This shouldn't be hardcoded. We should take the size of pipe, and dynamically allocate memory for buffer with that size. */
+    const int buffer_size = 1024;
+    char buffer[buffer_size];
     std::string result = "";
 
+    /* TO DO: It should be unique ptr. */
     std::shared_ptr<FILE> pipe (popen(command.c_str(), "r"), pclose); //Why unique ptr not working??
 
     if (!pipe)
         throw std::runtime_error("popen() failed!");
 
     /* Append output from system call to string. */
-    while (!feof(pipe.get()))
+    while (feof(pipe.get()) == 0)
     {
-        if (fgets(buffer, 1024, pipe.get()) != NULL)
+        if (fgets(buffer, buffer_size, pipe.get()) != NULL)
         {
             result += buffer;
         }
@@ -159,11 +176,10 @@ std::string Manager::System_Call(const std::string &command) const
 std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input) const
 {
     std::set<int> pid_numbers;
+    std::string pid = "";
 
-    for(auto it = input.begin(); it != input.end(); ++it)
+    for(std::vector<std::string>::iterator it = input.begin(); it != input.end(); ++it)
     {
-        std::string pid = "";
-
         /* First serie of characters from the end is a pid number. Save it, and repeat loop, until we get all PIDs. */
         for(std::string::reverse_iterator string_iterator = (*it).rbegin(); string_iterator != (*it).rend(); ++string_iterator)
         {
@@ -173,9 +189,9 @@ std::set<int> Manager::Get_PIDs_from_Strings(std::vector<std::string> &input) co
             }
             else
             {
+                /* We finished copying number to string, now we have to reverse it back to original PID. */
                 std::reverse(pid.begin(), pid.end());
-                int pid_nr = std::stoi(pid);
-                pid_numbers.insert(pid_nr);
+                pid_numbers.insert(std::stoi(pid));
                 pid.clear();
 
                 break;
@@ -224,10 +240,10 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
     //std::string log_string = "";
 
     /* Call 'ps' syscall to get processes names based on their PIDs */
-    for(auto it = pid_numbers.begin(); it != pid_numbers.end(); ++it)
+    for(auto PID_nr = pid_numbers.begin(); PID_nr != pid_numbers.end(); ++PID_nr)
     {
-        /* TO DO: Add nicer way of calling function (got hint on e-mail) */
-        std::string process_name = System_Call("ps -p " + std::to_string(*it) + " -o comm=");
+        /* Get process name based on its PID */
+        std::string process_name = System_Call("ps -p " + std::to_string(*PID_nr) + " -o comm=");
 
         /* If output is bad, ignore it. */
         if(process_name.empty() || process_name.back() != '\n')
@@ -253,7 +269,7 @@ void Manager::Add_Item_to_Observe(const Item &item, Process_Statistics time_stat
 }
 
 void Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
-{
+{    
     objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (std::move(item), std::move(time_stats)));
 }
 
@@ -261,8 +277,7 @@ void Manager::Print_Elapsed_Time() const
 {
     for(auto &object : objects)
     {
-        object.second.Stop_Counting_Time();
-        qDebug() << QString::fromStdString(object.first.name) << ": " << QString::number(object.second.time_difference);
+        cout << "Time of: " << object.first.name <<" is: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << endl;
     }
 }
 
@@ -305,10 +320,11 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
         {
             /* Add new process */
             Item item(std::move(name));
-            Process_Statistics tmp;
+            //Process_Statistics tmp;
 
             cout << "Adding new item: " << item.name << endl << endl;
-            Add_Item_to_Observe(std::move(item), std::move(tmp));
+            //Add_Item_to_Observe(std::move(item), std::move(tmp));
+            Add_Item_to_Observe(std::move(item), Process_Statistics());
         }
     }
 }
@@ -442,7 +458,7 @@ int Manager::Process_Statistics::Parse_Hours() const
 
 /**
  * @brief We want to parse the string (one line from file) to get time (separately hour, minute, seconde).
- * @param line - looks like 'chrome ::: 0:24:35'.
+ * @param line - looks like 'chrome ::: 0:24:35'
  * @return a tuple, that consists of name, hours, minutes, seconds.
  */
 
@@ -471,9 +487,9 @@ std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std:
                 {
                     /* Convert char to number */
                     time.push_back(static_cast<int> (*time_iterator) - 48);
-                   time_iterator++; //This makes time iterator point to semicolon. When loop makes another iteration it will land after semicolon, which is what we want.
-                   if(time_iterator == line.end())
-                    break;
+                    time_iterator++; //This makes time iterator point to semicolon. When loop makes another iteration it will land after semicolon, which is what we want.
+                    if(time_iterator == line.end())
+                     break;
                 }
                 /* If unit of time is a double digit. */
                 else if(*(time_iterator + 2) == ':' || (time_iterator + 2) == line.end())
@@ -492,7 +508,6 @@ std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std:
             hours = time.at(0);
             minutes = time.at(1);
             secondes = time.at(2);
-            //cout << "Time: " << hours << " " << minutes << " " << secondes << endl;
 
             return std::make_tuple(name_of_process, hours, minutes, secondes);
         }
@@ -514,7 +529,7 @@ void Manager::LOGS(const std::__cxx11::string &info) const
     {
         /* Get current time */
         time_t t = time(0);
-        struct tm * now = localtime(&t);
+        localtime(&t);
 
         /* Cast time to string */
         char *date = ctime(&t);
