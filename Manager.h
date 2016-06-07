@@ -25,7 +25,7 @@ private:
         Process_Statistics(int hours, int minutes, int seconds);
 
         Process_Statistics(const Process_Statistics &statistics);
-        Process_Statistics(Process_Statistics &&rhs);
+        Process_Statistics(Process_Statistics &&rhs) noexcept;
 
         void Stop_Counting_Time();
         void Parse_Time();
@@ -34,7 +34,7 @@ private:
 
 
 
-        bool operator < (const Process_Statistics &rhs) const
+        bool operator < (const Process_Statistics &rhs) const noexcept
         {
             return total_hours < rhs.total_hours;
         }
@@ -64,19 +64,20 @@ private:
 private:
     static void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats);
     static void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
+
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
     void LOGS(const std::string& info) const;
 
     void Check_if_Applications_are_Running(std::vector<std::string> &processes_names);
     void Add_New_Observed_Objects(std::vector<std::string> &processes_names);
-    std::vector<std::string> Observe();
 
     std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const;
     std::string System_Call(const std::string &command) const;
     std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input) const;
     std::vector<std::string> Split_Command_Output_to_Strings(const std::string &input) const;
     std::vector<std::string> Get_Processes_Names(const std::set<int> &pid_numbers) const;
+    std::vector<std::string> Observe();
 
 
 //Members
