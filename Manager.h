@@ -26,13 +26,12 @@ private:
 
         Process_Statistics(const Process_Statistics &statistics);
         Process_Statistics(Process_Statistics &&rhs) noexcept;
+        Process_Statistics& operator = (const Process_Statistics &rhs)  = delete;
 
         void Stop_Counting_Time();
         void Parse_Time();
         int Parse_Minutes();
         int Parse_Seconds();
-
-
 
         bool operator < (const Process_Statistics &rhs) const noexcept
         {
@@ -43,15 +42,11 @@ private:
         std::chrono::time_point<_clock> begin_time;
         std::chrono::time_point<_clock> end_time;
 
-        double time_difference;
         int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
         bool is_running;
 
         //typedef std::chrono::duration<double, std::ratio<1>> seconds; //It's more precise, but we don't need that much precision.
         typedef std::chrono::seconds seconds;
-        typedef std::chrono::minutes minutes;
-        typedef std::chrono::minutes hours;
-
     };
 
     static std::vector<std::pair<Item, Process_Statistics>> objects;
@@ -88,6 +83,9 @@ public:
 public:
     explicit Manager(QObject *parent = 0);
     Manager(const Manager &other) = delete;
+    Manager(Manager &&other) = delete;
+    Manager& operator = (const Manager &other) = delete;
+    Manager& operator = (Manager &&other) = delete;
     ~Manager();
 
     void Start();
