@@ -28,22 +28,24 @@ Manager::~Manager()
 
 }
 
-Manager::Process_Statistics::Process_Statistics() : total_hours(0), total_minutes(0), total_seconds(0),
-    begin_time(Process_Statistics::_clock::now()), end_time((Process_Statistics::_clock::now())), is_running(true)
+Manager::Process_Statistics::Process_Statistics() : Process_Statistics(0, 0, 0)
 { }
 
 Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seconds)
-    : total_hours(hours), total_minutes(minutes), total_seconds(seconds),
-    begin_time(Process_Statistics::_clock::now()), end_time((Process_Statistics::_clock::now())), is_running(true)
+    : begin_time(Process_Statistics::_clock::now()), end_time((Process_Statistics::_clock::now())),
+      total_hours(hours), total_minutes(minutes), total_seconds(seconds),
+      is_running(true)
 { }
 
 Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
-    : total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
-      begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference), is_running(statistics.is_running)
+    : begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference), total_hours (statistics.total_hours),
+      total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
+      is_running(statistics.is_running)
 { }
 
-Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
-    total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds), time_difference(rhs.time_difference), is_running(rhs.is_running)
+Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexcept : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
+    time_difference(rhs.time_difference), total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds),
+    is_running(rhs.is_running)
 { }
 
 Manager::Process_Statistics::~Process_Statistics()
@@ -320,10 +322,7 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
         {
             /* Add new process */
             Item item(std::move(name));
-            //Process_Statistics tmp;
-
             cout << "Adding new item: " << item.name << endl << endl;
-            //Add_Item_to_Observe(std::move(item), std::move(tmp));
             Add_Item_to_Observe(std::move(item), Process_Statistics());
         }
     }
