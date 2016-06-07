@@ -38,23 +38,23 @@ Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seco
 { }
 
 Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
-    : begin_time(statistics.begin_time), end_time(statistics.end_time), time_difference(statistics.time_difference), total_hours (statistics.total_hours),
+    : begin_time(statistics.begin_time), end_time(statistics.end_time), total_hours (statistics.total_hours),
       total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
       is_running(statistics.is_running)
 { }
 
 Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexcept : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
-    time_difference(rhs.time_difference), total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds),
+    total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds),
     is_running(rhs.is_running)
 { }
 
 Manager::Process_Statistics::~Process_Statistics()
-{
-    end_time = Process_Statistics::_clock::now();
-    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
-}
+{ }
 
 
+/**
+ * @brief Main loop.
+ */
 void Manager::Start()
 {
     try
@@ -96,23 +96,27 @@ void Manager::Start()
     {
         qDebug() << "Exception caught: " << exception.what();
         LOGS(std::string("ERROR! ios_base::failure exception caught: ") + exception.what());
-        //Save Time
+        //TO DO: Save Time
     }
     catch(std::runtime_error &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
         LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
-        //Save Time
+        //TO DO: Save Time
     }
 
     catch (...)
     {
         qDebug() << "Unknow exception caught.";
         LOGS("ERROR! Unknow exception.");
-        //Save Time
+        //TO DO: Save Time
     }
 }
 
+/**
+ * @brief Executes shell command, parses its output to one line strings, converts PIDs from string to int, translates those PIDs to processes names.
+ * @return Names of processes currently running on PC.
+ */
 std::vector<std::string> Manager::Observe()
 {
     std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,8\\}'";
@@ -283,6 +287,11 @@ void Manager::Print_Elapsed_Time() const
     }
 }
 
+
+/**
+ * @brief Checks whether observed applications went OFF, or if they were restarted (ON -> OFF -> ON).
+ * @param processes_names - vector of processes names currently running on PC.
+ */
 void Manager::Check_if_Applications_are_Running(std::vector<std::string> &processes_names)
 {
     for(auto &item : objects)
@@ -313,6 +322,11 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
     }
 }
 
+
+/**
+ * @brief Checks if there are new processes running. If so, then adds them for being observed.
+ * @param processes_names - vector of processes names currently running on PC.
+ */
 void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names)
 {
     for(auto &name : processes_names)
@@ -328,7 +342,9 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
     }
 }
 
-
+/**
+ * @brief Counts time for all objects that were or still are observed, and saves to a file.
+ */
 void Manager::Save_Statistics_to_File()
 {
     file_stats.open(path_to_stats_file, std::fstream::out);
@@ -342,8 +358,6 @@ void Manager::Save_Statistics_to_File()
 
         object.second.Parse_Time();
         file_stats << object.first.name << " ::: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
-
-        //cout << std::fixed << object.first.name << endl;
     }
     file_stats.close();
 }
@@ -351,7 +365,6 @@ void Manager::Save_Statistics_to_File()
 /**
  * @brief Loads name of processess with theirs time, stores those information in tuple, creates Item and Process_Statistics objects based on those informations and calls Add_Item().
  */
-
 void Manager::Load_Statistics_from_File()
 {
     file_stats.open(path_to_stats_file, std::fstream::in);
@@ -389,8 +402,6 @@ void Manager::Process_Statistics::Parse_Time()
 void Manager::Process_Statistics::Stop_Counting_Time()
 {
     end_time = Process_Statistics::_clock::now();
-    /* time_difference MUST BE assigned in seconds! Some parts of application are based on it. */
-    time_difference = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
 }
 
 /**
@@ -399,7 +410,6 @@ void Manager::Process_Statistics::Stop_Counting_Time()
  */
 int Manager::Process_Statistics::Parse_Seconds()
 {
-    /* TO DO: Should use time_difference instead of calculating what already has been calculated. */
     int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
     seconds += total_seconds;
 
@@ -429,11 +439,10 @@ int Manager::Process_Statistics::Parse_Minutes()
 
 
 /**
- * @brief We want to parse the string (one line from file) to get time (separately hour, minute, seconde).
+ * @brief We want to parse the string (one line from file) to get name and time (separately hour, minute, seconde).
  * @param line - looks like 'chrome ::: 0:24:35'
  * @return a tuple, that consists of name, hours, minutes, seconds.
  */
-
 std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std::string &line) const
 {
    std::stringstream line_stream (line);
@@ -488,6 +497,9 @@ std::tuple<std::string, int, int, int> Manager::Parse_File_Statistics(const std:
 }
 
 
+/**
+ * @brief Useful debugging info. The first time it is called it will append date to a file.
+ */
 std::once_flag Debug_Date_Once;
 
 void Manager::LOGS(const std::__cxx11::string &info) const
