@@ -1,6 +1,7 @@
 #ifndef ITEM_H
 #define ITEM_H
 
+//C++ includes
 #include <QPixmap>
 #include <memory>
 
@@ -10,15 +11,15 @@ class Item /* This is a single application, that we observe. */
 
 private:
     std::string name;
-    std::shared_ptr<QPixmap> icon;
+    std::unique_ptr<QPixmap> icon;
 
 private:
-    void Set_Icon(QString path);
 
 public:
-    Item();
-    explicit Item(const std::string &name);
+    Item() = delete;
+    explicit Item(const std::string &_name);
     explicit Item(std::string &&name);
+    Item(Item &&rhs);
     Item(const Item &rhs);
 
 public:
