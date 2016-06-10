@@ -1,8 +1,10 @@
 #ifndef MANAGER_H
 #define MANAGER_H
 
+//Local includes
 #include <mainwindow.h>
 
+//C++ includes
 #include <set>
 #include <chrono>
 #include <iostream>

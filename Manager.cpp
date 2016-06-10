@@ -53,7 +53,7 @@ Manager::Process_Statistics::~Process_Statistics()
 
 
 /**
- * @brief Main loop.
+ * @brief Main observing loop.
  */
 void Manager::Start()
 {
@@ -281,10 +281,10 @@ void Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
 
 void Manager::Print_Elapsed_Time() const
 {
-    for(auto &object : objects)
+    std::for_each(objects.begin(), objects.end(), [](const std::pair<Item, Process_Statistics> &object)
     {
         cout << "Time of: " << object.first.name <<" is: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << endl;
-    }
+    });
 }
 
 
@@ -297,7 +297,7 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
     for(auto &item : objects)
     {
         /* If application was being observed (or was saved in statistics file), but now it is OFF. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) == processes_names.end())
+        if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) == processes_names.end())
         {
             if(item.second.is_running)
             {
@@ -309,7 +309,7 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
         }
 
         /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), [item](std::string name) { return item.first.name == name; }) != processes_names.end())
+        if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) != processes_names.end())
         {
             if(item.second.is_running == false)
             {
@@ -332,7 +332,7 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
     for(auto &name : processes_names)
     {
         /* Check if process currently running is in our observer vector 'objects'. If not, add it for counting time. */
-        if(std::find_if(objects.begin(), objects.end(), [name](std::pair<Item, Manager::Process_Statistics> rhs) { return name == rhs.first.name; }) == objects.end())
+        if(std::find_if(objects.begin(), objects.end(), [&name](const std::pair<Item, Manager::Process_Statistics> &rhs) { return name == rhs.first.name; }) == objects.end())
         {
             /* Add new process */
             Item item(std::move(name));
