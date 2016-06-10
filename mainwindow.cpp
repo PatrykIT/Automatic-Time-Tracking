@@ -1,14 +1,18 @@
+//Local includes
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "Item.h"
 #include "Manager.h"
 
+//QT includes
 #include <QDebug>
 #include <QGraphicsPixmapItem>
 #include <QMessageBox>
 
+//C++ includes
 #include <thread>
 #include <iostream>
+#include <functional>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -16,10 +20,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    Manager *manager = new Manager(this);
-
     /* Disconnect logic of program from GUI */
-    std::thread manager_thread(&Manager::Start, manager); //std::thread takes its arguments by value. So passing *manager called CopyCtr! :D
+    std::unique_ptr<Manager> manager(new Manager(this));
+    std::thread manager_thread(&Manager::Start, std::move(manager));
     manager_thread.detach();
 }
 
@@ -97,7 +100,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
                                                                       QMessageBox::Yes | QMessageBox::No);
     if(question_exit == QMessageBox::Yes)
     {
-        //TO DO: Save time stats
+        //TO DO: Save time stats, tell other thread to end his work.
         event->accept();
     }
     else
