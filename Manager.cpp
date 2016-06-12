@@ -7,8 +7,8 @@
 #include <QDebug>
 
 //C++ includes
-#include <thread> //sleep_for
 #include <iostream>
+#include <thread> //sleep_for
 #include <sstream>
 #include <mutex>
 #include <ctime>
@@ -22,11 +22,6 @@ std::vector<std::pair<Item, Manager::Process_Statistics>> Manager::objects;
 Manager::Manager(QObject *parent) : QObject(parent)
 {
     objects.reserve(128);
-}
-
-Manager::~Manager()
-{
-
 }
 
 Manager::Process_Statistics::Process_Statistics() : Process_Statistics(0, 0, 0)
@@ -68,7 +63,7 @@ void Manager::Start()
 
         int counter = 0;
         /* Observe if there are new processes, and if old ones are still ON. */
-        while(counter < 5)
+        while(counter < 15)
         {
             processes_names = Observe();
 
@@ -297,10 +292,8 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
 {
     for(std::pair<Item, Process_Statistics> &item : objects)
     {
-        std::function<bool(const std::string&)> comparator = [&item](const std::string &name) -> bool { return name == item.first.name; };
-
         /* If application was being observed (or was saved in statistics file), but now it is OFF. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), comparator) == processes_names.end())
+        if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) == processes_names.end())
         {
             if(item.second.is_running)
             {
@@ -310,10 +303,9 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
                 item.second.is_running = false;
             }
         }
-
-        /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), comparator) != processes_names.end())
+        else
         {
+            /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
             if(item.second.is_running == false)
             {
                 cout << "Application: " << item.first.name << " was restarted." << endl;
