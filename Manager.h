@@ -7,7 +7,6 @@
 //C++ includes
 #include <set>
 #include <chrono>
-#include <iostream>
 #include <fstream>
 #include <tuple>
 
@@ -20,6 +19,7 @@ class Manager : public QObject
 
 //Members
 private:
+
     struct Process_Statistics
     {
         Process_Statistics();
@@ -54,13 +54,13 @@ private:
     static std::vector<std::pair<Item, Process_Statistics>> objects;
 
     std::fstream file_stats;
-    std::string path_to_stats_file = "Statistics.txt";
+    const std::string path_to_stats_file = "Statistics.txt";
 
 
 //Methods
 private:
-    static void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats);
-    static void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
+    void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats);
+    void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
 
     void Save_Statistics_to_File();
     void Load_Statistics_from_File();
@@ -88,7 +88,7 @@ public:
     Manager(Manager &&other) = delete;
     Manager& operator = (const Manager &other) = delete;
     Manager& operator = (Manager &&other) = delete;
-    ~Manager();
+    ~Manager() = default;
 
     void Start();
     void Print_Elapsed_Time() const;
