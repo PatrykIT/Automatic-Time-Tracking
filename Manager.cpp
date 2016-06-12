@@ -12,6 +12,7 @@
 #include <sstream>
 #include <mutex>
 #include <ctime>
+#include <functional>
 
 using std::cout;
 using std::endl;
@@ -296,8 +297,10 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
 {
     for(auto &item : objects)
     {
+        std::function<bool(const std::string&)> comparator = [&item](const std::string &name) -> bool { return name == item.first.name; };
+
         /* If application was being observed (or was saved in statistics file), but now it is OFF. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) == processes_names.end())
+        if(std::find_if(processes_names.begin(), processes_names.end(), comparator) == processes_names.end())
         {
             if(item.second.is_running)
             {
@@ -309,7 +312,7 @@ void Manager::Check_if_Applications_are_Running(std::vector<std::string> &proces
         }
 
         /* If applicaiton was being observed, then switched OFF, and then started again, we must continue with counting time for it. */
-        if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) != processes_names.end())
+        if(std::find_if(processes_names.begin(), processes_names.end(), comparator) != processes_names.end())
         {
             if(item.second.is_running == false)
             {
