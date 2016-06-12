@@ -295,7 +295,7 @@ void Manager::Print_Elapsed_Time() const
  */
 void Manager::Check_if_Applications_are_Running(std::vector<std::string> &processes_names)
 {
-    for(auto &item : objects)
+    for(std::pair<Item, Process_Statistics> &item : objects)
     {
         std::function<bool(const std::string&)> comparator = [&item](const std::string &name) -> bool { return name == item.first.name; };
 
