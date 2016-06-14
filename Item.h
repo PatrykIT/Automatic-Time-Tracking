@@ -20,9 +20,13 @@ private:
 public:
     Item() = delete;
     explicit Item(const std::string &_name);
-    explicit Item(std::string &&name);
+    explicit Item(std::string &&_name);
+
     Item(Item &&rhs) noexcept;
+    Item& operator =(Item &&rhs) = delete;
+
     Item(const Item &rhs);
+    Item& operator =(const Item &rhs) = delete;
 
 public:
 
