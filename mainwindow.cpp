@@ -14,6 +14,7 @@
 #include <iostream>
 #include <functional>
 
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -22,6 +23,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     /* Disconnect logic of program from GUI */
     std::unique_ptr<Manager> manager(new Manager(this));
+
+    /* Quote from qtcentre forum: "If you are using locally allocated memory (eg. on the stack), then you don't want to delete that memory until the slot is called and completed, thus you would use a BlockingQueuedConnection." Blocking waits for the slot to complete before returning to execution in the thread emitting the signal. */
+    QObject::connect(manager.get(), &Manager::Show_Icon, this, &MainWindow::Show_Icon, Qt::BlockingQueuedConnection);
+
     std::thread manager_thread(&Manager::Start, std::move(manager));
     manager_thread.detach();
 }
@@ -29,6 +34,21 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+/**
+ * @brief Right now a helper function, just to see if icons are loaded successfully.
+ * @param icon
+ */
+void MainWindow::Show_Icon(QPixmap &icon)
+{
+    ui->ItemIcon->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    graphic_scene = std::make_unique<QGraphicsScene>(ui->ItemIcon);
+    ui->ItemIcon->setScene(graphic_scene.get());
+    graphic_scene->addPixmap(icon);
+
+    /* Wait before another icon loads. */
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 void MainWindow::on_Start_Stats_Button_clicked() //Put this to manager object

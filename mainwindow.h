@@ -5,6 +5,8 @@
 #include <QGraphicsScene>
 #include <QCloseEvent>
 
+#include <memory>
+
 
 namespace Ui
 {
@@ -21,7 +23,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
-    QGraphicsScene *graphic_scene;
+    std::unique_ptr<QGraphicsScene> graphic_scene;
 
 
 private:
@@ -29,6 +31,8 @@ private:
 
 private slots:
     void on_Start_Stats_Button_clicked();
+    void Show_Icon(QPixmap &icon);
+public slots:
 
 };
 
