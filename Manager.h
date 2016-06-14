@@ -44,7 +44,7 @@ private:
         std::chrono::time_point<_clock> begin_time;
         std::chrono::time_point<_clock> end_time;
 
-        int total_hours, total_minutes, total_seconds; //Time that application was run since beggining of watching.
+        int total_hours, total_minutes, total_seconds; //Time that application was ran since beggining of watching.
         bool is_running;
 
         //typedef std::chrono::duration<double, std::ratio<1>> seconds; //It's more precise, but we don't need that much precision.
@@ -96,6 +96,7 @@ public:
 
 
 signals:
+    void Show_Icon(QPixmap &icon);
 
 public slots:
 };
