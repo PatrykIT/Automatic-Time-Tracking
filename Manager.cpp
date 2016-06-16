@@ -53,6 +53,9 @@ Manager::Process_Statistics::~Process_Statistics()
  */
 void Manager::Start()
 {
+    /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     try
     {
         /* Add processes from file */
@@ -63,7 +66,7 @@ void Manager::Start()
 
         int counter = 0;
         /* Observe if there are new processes, and if old ones are still ON. */
-        while(counter < 15)
+        while(counter < 5)
         {
             processes_names = Observe();
 
@@ -91,8 +94,7 @@ void Manager::Start()
     catch(std::ios_base::failure &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
-        LOGS(std::string("ERROR! ios_base::failure exception caught: ") + exception.what());
-        //TO DO: Save Time
+        //TO DO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
     }
     catch(std::runtime_error &exception)
     {
@@ -100,7 +102,12 @@ void Manager::Start()
         LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
         //TO DO: Save Time
     }
-
+    catch(std::bad_alloc &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //TO DO: Save Time
+    }
     catch (...)
     {
         qDebug() << "Unknow exception caught.";
@@ -152,8 +159,8 @@ std::string Manager::System_Call(const std::string &command) const
     char buffer[buffer_size];
     std::string result = "";
 
-    /* TO DO: It should be unique ptr. */
-    std::shared_ptr<FILE> pipe (popen(command.c_str(), "r"), pclose); //Why unique ptr not working??
+    /* Use unique_ptr with custom deleter. */
+    std::unique_ptr<FILE, decltype(&pclose)> pipe (popen(command.c_str(), "r"), pclose);
 
     if (!pipe)
         throw std::runtime_error("popen() failed!");
@@ -161,7 +168,7 @@ std::string Manager::System_Call(const std::string &command) const
     /* Append output from system call to string. */
     while (feof(pipe.get()) == 0)
     {
-        if (fgets(buffer, buffer_size, pipe.get()) != NULL)
+        if (fgets(buffer, buffer_size, pipe.get()) != NULL) //You can happily use fgets() to read from a file stream created by popen()
         {
             result += buffer;
         }
@@ -367,7 +374,6 @@ void Manager::Load_Statistics_from_File()
         return; //File doesn't exists. Either it was first time the user run an app, and there is nothing to load from, or it was deleted.
 
     std::string line;
-
     while(std::getline(file_stats, line))
     {
         if(line.size() > 0)
@@ -377,6 +383,10 @@ void Manager::Load_Statistics_from_File()
 
             Item item(std::move (std::get<0>(process_information) ));
             Process_Statistics statistics(std::get<1>(process_information), std::get<2>(process_information), std::get<3>(process_information));
+
+
+            if(item.icon != nullptr)
+                emit Show_Icon(*item.icon);
 
             Add_Item_to_Observe(std::move(item), std::move(statistics));
         }
