@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 
+//POSIX includes
 #include <dirent.h>
 
 using std::cout;
@@ -32,12 +33,12 @@ Item::Item(const Item &rhs) : name(rhs.name)
 Item::Item(Item &&rhs) noexcept
 {
     name = std::move(rhs.name);
-    icon = std::move(icon);
+    icon = std::move(rhs.icon);
 }
 
 void Item::Load_Icon()
 {
-    /* We will search for icon in 3 sizes: 32x32, 48x48, 64x64. First found icon size is loaded. */
+    /* We will search for icons in variety of paths. Linux has them all over the place, sadly.*/
     std::vector<std::string> paths_to_icons = {icons_path, icons_path_2 + "32x32/apps/", icons_path_2 + "48x48/apps/", icons_path_2 + "64x64/apps/", icons_path_3 + "apps/32/", icons_path_3 + "apps/48/"};
     struct dirent *dir_struct;
 
@@ -61,6 +62,5 @@ void Item::Load_Icon()
             }
         }
     }
-
     cout << "Icon for name: " << name << " wasn't found." << endl;
 }
