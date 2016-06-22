@@ -38,6 +38,10 @@ Item::Item(Item &&rhs) noexcept
 
 void Item::Load_Icon()
 {
+    static const std::string icons_path = "/usr/share/pixmaps/";
+    static const std::string icons_path_2 = "/usr/share/icons/hicolor/";
+    static const std::string icons_path_3 = "/usr/share/icons/Humanity/";
+
     /* We will search for icons in variety of paths. Linux has them all over the place, sadly.*/
     std::vector<std::string> paths_to_icons = {icons_path, icons_path_2 + "32x32/apps/", icons_path_2 + "48x48/apps/", icons_path_2 + "64x64/apps/", icons_path_3 + "apps/32/", icons_path_3 + "apps/48/"};
     struct dirent *dir_struct;
@@ -56,6 +60,8 @@ void Item::Load_Icon()
             {
                 /* Load icon from file */
                 icon = std::make_unique<QPixmap>(QString::fromStdString(*path + dir_struct->d_name));
+                /* We want all icons to be of the same size */
+                Scale_Icon(*icon);
 
                 cout << "Found an icon! : " << dir_struct->d_name << endl;
                 return;
@@ -63,4 +69,9 @@ void Item::Load_Icon()
         }
     }
     cout << "Icon for name: " << name << " wasn't found." << endl;
+}
+
+void Item::Scale_Icon(QPixmap &pixmap)
+{
+    pixmap = pixmap.scaled(QSize(32, 32), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
