@@ -24,7 +24,6 @@
 #include "qdropboxdeltaresponse.h"
 
 typedef int qdropbox_request_type;
-typedef double ELEMELE;
 
 const qdropbox_request_type QDROPBOX_REQ_INVALID = 0x00;
 const qdropbox_request_type QDROPBOX_REQ_CONNECT = 0x01;
