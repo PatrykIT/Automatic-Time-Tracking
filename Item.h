@@ -21,6 +21,9 @@ private:
     void Load_Icon();
     void Scale_Icon(QPixmap &pixmap);
 
+//Members
+public:
+
 //Methods
 public:
     Item() = delete;
@@ -33,9 +36,6 @@ public:
 
     Item(const Item &rhs);
     Item& operator =(const Item &rhs) = delete;
-
-//Members
-public:
 
 signals:
 
