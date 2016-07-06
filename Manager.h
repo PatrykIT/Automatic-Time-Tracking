@@ -84,10 +84,13 @@ public:
 //Methods
 public:
     explicit Manager(QObject *parent = 0);
+    
     Manager(const Manager &other) = delete;
     Manager(Manager &&other) = delete;
+    
     Manager& operator = (const Manager &other) = delete;
     Manager& operator = (Manager &&other) = delete;
+    
     ~Manager() = default;
 
     void Start();
