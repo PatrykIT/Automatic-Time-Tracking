@@ -27,13 +27,15 @@ const qdropboxjson_entry_type QDROPBOXJSON_TYPE_UNKNOWN = '?';
 class QDropboxJson;
 
 //! Keeps values of a JSON
-union qdropboxjson_value{
+union qdropboxjson_value
+{
     QDropboxJson  *json; //!< Used to store subjsons (JSON in JSON)
     QString       *value; //!< used to store a real value, all values are converted from QString
 };
 
 //! Keeps keys of a JSON
-struct qdropboxjson_entry{
+struct qdropboxjson_entry
+{
     qdropboxjson_entry_type type; //!< Datatype of value
     qdropboxjson_value      value; //!< Reference to the value struct
 };
@@ -55,7 +57,7 @@ struct qdropboxjson_entry{
   may return nonsense data. Use this flag with care and only if you know what you're doing.
 
   \warning Currently arrays in JSONs are not supported.
-  \todo Implemement setter functions and toString() for JSON generation (altough not necessary it
+  \todo Implemement setter functions and toString() for JSON generation (although not necessary it
         would be a nice feature)
  */
 class QTDROPBOXSHARED_EXPORT QDropboxJson : public QObject
@@ -120,7 +122,7 @@ public:
       Returns true if the QDropboxJson contains valid data from a JSON. If an error occurs
       during the parsing of a JSON string this function will return false.
      */
-    bool isValid();
+    bool isValid() const;
 
     /*!
       Returns true if the QDropboxJson contains the given key.
@@ -204,7 +206,7 @@ public:
 	/*!
 	  Returnes a stored array as a list of string items. If the key does not exist or is not
 	  stored as array the function returns an empty list. If you need the items in a specific
-	  data type you have to do equivalent casting your self!
+      data type you have to do equivalent casting yourself!
 	*/
 	QStringList getArray(QString key, bool force = false);
 
@@ -215,12 +217,12 @@ public:
 	*/
 	QStringList getArray();
 
-	/**!
+    /**
 	  Overloaded operator to copy a QDropboxJson.
 	*/
     QDropboxJson& operator =(QDropboxJson&);
 
-	/**!
+    /**
 	  A JSON may be an anonymous array like this:
 	  \code
 	  [
@@ -234,7 +236,7 @@ public:
 	*/
 	bool isAnonymousArray();
 
-	/**!
+    /**
 	  Compares two JSON objects if they are the same.
 	  This means that they have the same keys with the same values.
 

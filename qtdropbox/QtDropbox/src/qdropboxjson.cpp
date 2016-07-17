@@ -45,8 +45,8 @@ void QDropboxJson::parseString(QString strJson)
     // basically a json is valid until it is invalidated
     valid = true;
 
-    if(!strJson.startsWith("{") ||
-            !strJson.endsWith("}"))
+    if(strJson.startsWith("{") == false ||
+            strJson.endsWith("}") == false)
     {
 #ifdef QTDROPBOX_DEBUG
     qDebug() << "string does not start with { " << endl;
@@ -59,7 +59,7 @@ void QDropboxJson::parseString(QString strJson)
 #endif
 			_anonymousArray = true;
 			// fix json to be parseable by the algorithm below
-			strJson = "{\"_anonArray\":"+strJson+"}";
+            strJson = "{\"_anonArray\":" + strJson + "}";
 		}
 		else
 		{
@@ -79,7 +79,7 @@ void QDropboxJson::parseString(QString strJson)
     bool openQuotes  = false;
 
 
-    for(int i=0; i<strJson.size(); ++i)
+    for(int i = 0; i < strJson.size(); ++i)
     {
         switch(strJson.at(i).toLatin1())
         {
@@ -270,7 +270,7 @@ void QDropboxJson::clear()
     return;
 }
 
-bool QDropboxJson::isValid()
+bool QDropboxJson::isValid() const
 {
     return valid;
 }
@@ -368,29 +368,31 @@ void QDropboxJson::setUInt(QString key, quint64 value)
 
 QString QDropboxJson::getString(QString key, bool force)
 {
-    if(!valueMap.contains(key))
+    if(valueMap.contains(key) == false)
         return "";
 
-    qdropboxjson_entry e;
-    e = valueMap.value(key);
+    qdropboxjson_entry entry_json = valueMap.value(key);
 
-    if(!force && e.type != QDROPBOXJSON_TYPE_STR)
+    if(!force && entry_json.type != QDROPBOXJSON_TYPE_STR)
         return "";
 
-	QString value = e.value.value->mid(1, e.value.value->size()-2);
+    QString value = entry_json.value.value->mid(1, entry_json.value.value->size() - 2); //Why -2? TO DO: Check this, out of curiosity.
     return value;
 }
 
 void QDropboxJson::setString(QString key, QString value)
 {
-    if(valueMap.contains(key)){
+    if(valueMap.contains(key))
+    {
         *(valueMap[key].value.value) = value;
-    }else{
-        qdropboxjson_entry e;
-        QString *valuePointer = new QString(value);
-        e.value.value = valuePointer;
-        e.type        = QDROPBOXJSON_TYPE_STR;
-        valueMap[key] = e;
+    }
+    else
+    {
+        qdropboxjson_entry entry_json;
+        /* TO DO: Change value to smart pointer. */
+        entry_json.value.value = new QString(value);
+        entry_json.type        = QDROPBOXJSON_TYPE_STR;
+        valueMap[key] = entry_json;
     }
 }
 
@@ -411,9 +413,12 @@ QDropboxJson* QDropboxJson::getJson(QString key)
 
 void QDropboxJson::setJson(QString key, QDropboxJson value)
 {
-    if(valueMap.contains(key)){
+    if(valueMap.contains(key))
+    {
         *(valueMap[key].value.json) = value;
-    }else{
+    }
+    else
+    {
         qdropboxjson_entry e;
         QDropboxJson *valuePointer = new QDropboxJson(value);
         e.value.json = valuePointer;
@@ -455,13 +460,13 @@ bool QDropboxJson::getBool(QString key, bool force)
     if(!valueMap.contains(key))
         return false;
 
-    qdropboxjson_entry e;
-    e = valueMap.value(key);
+    qdropboxjson_entry entry;
+    entry = valueMap.value(key);
 
-    if(!force && e.type != QDROPBOXJSON_TYPE_BOOL)
+    if(!force && entry.type != QDROPBOXJSON_TYPE_BOOL)
         return false;
 
-    if(!e.value.value->compare("false"))
+    if(!entry.value.value->compare("false"))
         return false;
 
     return true;
@@ -524,35 +529,39 @@ QString QDropboxJson::strContent() const
 
     QString content = "{";
 	QList<QString> keys = valueMap.keys();
-	for(int i=0; i<keys.size(); ++i)
+    for(int i = 0; i < keys.size(); ++i)
 	{
 		QString value = "";
-		qdropboxjson_entry e = valueMap.value(keys.at(i));
+        qdropboxjson_entry json = valueMap.value(keys.at(i));
 
-		if(e.type != QDROPBOXJSON_TYPE_JSON)
-			value = *e.value.value;
+        if(json.type == QDROPBOXJSON_TYPE_JSON)
+            /* TO DO: Check how this works. I see recursion here. */
+            value = json.value.json->strContent();
 		else
-			value = e.value.json->strContent();
+            value = *json.value.value;
 
 		content.append(QString("\"%1\": %2").arg(keys.at(i)).arg(value));
-		if(i != keys.size()-1)
+        if(i != keys.size() -1)
 			content.append(", ");
 	}
-	content.append("}");
+
+    content.append("}");
 	return content;
 }
 
 void QDropboxJson::emptyList()
 {
     QList<QString> keys = valueMap.keys();
-    for(qint32 i=0; i<keys.size(); ++i)
+    for(qint32 i = 0; i < keys.size(); ++i)
     {
-        qdropboxjson_entry e = valueMap.value(keys.at(i));
-        if(e.type == QDROPBOXJSON_TYPE_JSON)
-            delete e.value.json;
+        qdropboxjson_entry entry = valueMap.value(keys.at(i));
+
+        if(entry.type == QDROPBOXJSON_TYPE_JSON)
+            delete entry.value.json;
         else
-            delete e.value.value;
-		valueMap.remove(keys.at(i));
+            delete entry.value.value;
+
+        valueMap.remove(keys.at(i));
     }
     valueMap.clear();
     return;
@@ -600,21 +609,21 @@ QDropboxJson& QDropboxJson::operator=(QDropboxJson& other)
 QStringList QDropboxJson::getArray(QString key, bool force)
 {
 	QStringList list;
-	if(!valueMap.contains(key))
+    if(valueMap.contains(key) == 0)
         return list;
 
-    qdropboxjson_entry e;
-    e = valueMap.value(key);
+    qdropboxjson_entry json;
+    json = valueMap.value(key);
 
-    if(!force && e.type != QDROPBOXJSON_TYPE_ARRAY)
+    if(!force && json.type != QDROPBOXJSON_TYPE_ARRAY)
         return list;
 
-	QString arrayStr = e.value.value->mid(1, e.value.value->length()-2);
+    QString arrayStr = json.value.value->mid(1, json.value.value->length() -2); //Omit first '{' and last '}' (I think :) )
 	QString buffer = "";
 	bool inString = false;
 	int  inJson   = 0;
     int  inArray  = 0;
-	for(int i=0; i<arrayStr.size(); ++i)
+    for(int i = 0; i < arrayStr.size(); ++i)
 	{
 		QChar c = arrayStr.at(i);
         if( ((c != ',' && c != ' ') || inString || inJson || inArray) &&
@@ -666,7 +675,7 @@ int QDropboxJson::parseSubJson(QString strJson, int start, qdropboxjson_entry *j
     QDropboxJson* jsonValue = NULL;
 
 	int j;
-	for(j=start+1; openBrackets > 0 && j < strJson.size(); ++j)
+    for(j = start + 1; openBrackets > 0 && j < strJson.size(); ++j)
 	{
 		if(strJson.at(j).toLatin1() == '{')
 			openBrackets++;
@@ -679,6 +688,7 @@ int QDropboxJson::parseSubJson(QString strJson, int start, qdropboxjson_entry *j
 	qDebug() << "brackets = " << openBrackets << endl;
 	qDebug() << "json data(" << start << ":" << j-start << ") = " << buffer << endl;
 #endif
+    /* TO DO: Wrap jsonValue to smart pointer, for RAII. If any other function fails, we won't leak memory. */
 	jsonValue = new QDropboxJson();
 	jsonValue->parseString(buffer);
 
