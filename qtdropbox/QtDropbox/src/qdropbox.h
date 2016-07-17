@@ -25,6 +25,7 @@
 
 typedef int qdropbox_request_type;
 
+/* TO DO: Shoudln't this be enum? */
 const qdropbox_request_type QDROPBOX_REQ_INVALID = 0x00;
 const qdropbox_request_type QDROPBOX_REQ_CONNECT = 0x01;
 const qdropbox_request_type QDROPBOX_REQ_RQTOKEN = 0x02;
@@ -152,7 +153,7 @@ public:
       API URL will be set as well.
 
       \param key API key of your application (provided by Dropbox)
-      \param sharedSecret Your app's secret (provided by Dropbox
+      \param sharedSecret Your app's secret (provided by Dropbox)
       \param method Used authentication method
       \param url URL of the API server
       \param parent Parent object of QDropbox
@@ -213,7 +214,7 @@ public:
     /*!
       Returns the currently used API version.
      */
-    QString apiVersion();
+    QString apiVersion() const;
 
     /*!
       Use this function to set your applications API key if you did not already when
@@ -227,7 +228,7 @@ public:
     /*!
       Returns the used API key of the application.
     */
-    QString key();
+    QString key() const;
 
     /*!
       Use this function to set your applications API secret if you did not when using
@@ -241,7 +242,7 @@ public:
     /*!
       Returns the used API secret.
      */
-    QString sharedSecret();
+    QString sharedSecret() const;
 
     /*!
       If you have an already verified and authorized token to communicate with the
@@ -256,7 +257,7 @@ public:
       Returns the used token. This function may be used to get an authorized token
       after iniating a new connection (e.g. to save it for later use).
      */
-    QString token();
+    QString token() const;
 
     /*!
       If you have an already verified and authorized token and token secret to
@@ -271,17 +272,17 @@ public:
       Returns the currently used token secret. This function may be used to get an
       authorized token secret after iniating a new connection (e.g. to save it).
      */
-    QString tokenSecret();
+    QString tokenSecret() const;
 
     /*!
       Returns the Dropbox API key that is used.
      */
-    QString appKey();
+    QString appKey() const;
 
     /*!
       Returns the currently used Dropbox API shared secret of your application.
      */
-    QString appSharedSecret();
+    QString appSharedSecret() const;
 
     /*!
       This functions requests a request token that will be valid for the rest of the
@@ -370,7 +371,7 @@ public:
     QString signatureMethodString();
 
     /*!
-      This functions generates and returns a nonce with the given length. The
+      This functions generates and returns a nonce Qstring with the given length. The
       generated nonce is a random hex based string.
 
       \param length Length of the nonce.
@@ -490,7 +491,10 @@ public:
 	 /*!
 		\brief Indicates if information about finished requests is to be persisted.
 	 */
-	 bool saveFinishedRequests();
+     bool saveFinishedRequests() const;
+
+     void Download_File();
+     void Upload_File();
 
 signals:
     /*!
@@ -537,6 +541,7 @@ signals:
       \param secret Temporary token secret
      */
     void requestTokenFinished(QString token, QString secret);
+
     /*!
       This signal is emitted when the function requestAccessToken() is finished and
       a valid and authorized token used for the connection was received.
@@ -545,6 +550,7 @@ signals:
       \param secret Secret used for the connection to Dropbox
      */
     void accessTokenFinished(QString token, QString secret);
+
     /*!
       Emitted whenever the token changes.
 
@@ -591,6 +597,7 @@ public slots:
 private slots:
     void requestFinished(int nr, QNetworkReply* rply);
     void networkReplyFinished(QNetworkReply* rply);
+    void Output_Error(QDropbox::Error errorcode);
 
 private:
     enum {
@@ -616,10 +623,10 @@ private:
     QString oauthToken;
     QString oauthTokenSecret;
 
-    QMap <QNetworkReply*,int>  replynrMap;
+    QMap <QNetworkReply*, int>  replynrMap;
     int  lastreply;
-    QMap<int,qdropbox_request> requestMap;
-    QMap<int,int> delayMap;
+    QMap<int, qdropbox_request> requestMap;
+    QMap<int, int> delayMap;
 
     QString mail;
     QString password;
@@ -634,7 +641,7 @@ private:
 
     QDropboxAccount _account;
 
-	// indicates wether finished request shall be saved for debugging
+    // indicates whether finished request shall be saved for debugging
 	// mind the possible performance impact!
 	bool _saveFinishedRequests;
 
