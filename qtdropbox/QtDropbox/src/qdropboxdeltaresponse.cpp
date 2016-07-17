@@ -18,18 +18,15 @@ QDropboxDeltaResponse::QDropboxDeltaResponse(QString response)
 
     QStringList entriesList = js.getArray("entries");
 
-    for(QStringList::iterator i = entriesList.begin();
-        i != entriesList.end();
-        i++)
+    for(QStringList::iterator it = entriesList.begin();
+        it != entriesList.end();
+        it++)
     {
-        QDropboxJson s(*i);
+        /* Constructor of QDropboxJson will parse a string */
+        QDropboxJson s (*it);
         QStringList pair = s.getArray();
 
-        QSharedPointer<QDropboxFileInfo> val(
-                    new QDropboxFileInfo(
-                            pair.value(1)
-                        )
-                    );
+        QSharedPointer<QDropboxFileInfo> val (new QDropboxFileInfo(pair.value(1)));
         this->_entries.insert(pair.value(0), val);
     }
 }
