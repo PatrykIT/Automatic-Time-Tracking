@@ -23,7 +23,7 @@ private:
     struct Process_Statistics
     {
         Process_Statistics();
-        ~Process_Statistics();
+        ~Process_Statistics() = default;
         Process_Statistics(int hours, int minutes, int seconds);
 
         Process_Statistics(const Process_Statistics &statistics);

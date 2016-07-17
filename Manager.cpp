@@ -34,19 +34,16 @@ Manager::Process_Statistics::Process_Statistics(int hours, int minutes, int seco
 { }
 
 Manager::Process_Statistics::Process_Statistics(const Process_Statistics &statistics)
-    : begin_time(statistics.begin_time), end_time(statistics.end_time), total_hours (statistics.total_hours),
-      total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
+    : begin_time(statistics.begin_time), end_time(statistics.end_time),
+      total_hours (statistics.total_hours), total_minutes(statistics.total_minutes), total_seconds(statistics.total_seconds),
       is_running(statistics.is_running)
 { }
 
-Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexcept : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
+Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexcept
+    : begin_time(std::move(rhs.begin_time)), end_time(std::move(rhs.end_time)),
     total_hours(rhs.total_hours), total_minutes(rhs.total_minutes), total_seconds(rhs.total_seconds),
     is_running(rhs.is_running)
 { }
-
-Manager::Process_Statistics::~Process_Statistics()
-{ }
-
 
 /**
  * @brief Main observing loop.
