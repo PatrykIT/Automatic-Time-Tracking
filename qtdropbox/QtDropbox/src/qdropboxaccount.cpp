@@ -23,11 +23,8 @@ QDropboxAccount::QDropboxAccount(const QDropboxAccount& other) :
 
 void QDropboxAccount::_init()
 {
-    if(!isValid())
-    {
-        valid = false;
+    if(isValid() == false)
         return;
-    }
 
     if(!hasKey("referral_link") ||
        !hasKey("display_name")  ||
@@ -122,7 +119,7 @@ quint64 QDropboxAccount::quotaNormal()  const
     return _quotaNormal;
 }
 
-QDropboxAccount &QDropboxAccount::operator =(QDropboxAccount &a)
+QDropboxAccount &QDropboxAccount::operator =(const QDropboxAccount &a)
 {
     copyFrom(a);
     return *this;

@@ -91,7 +91,7 @@ public:
       Overloaded operator to copy a QDropboxAccount by using =. Internally
       copyFrom() is called.
      */
-    QDropboxAccount& operator =(QDropboxAccount&);
+    QDropboxAccount& operator =(const QDropboxAccount&);
 
     /*!
       This function is used to copy the data from an other QDropboxAccount.
