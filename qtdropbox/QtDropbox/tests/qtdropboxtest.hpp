@@ -38,9 +38,12 @@ private Q_SLOTS:
     void dropboxCase1();
     void dropboxCase2();
 
+    /* My tests */
+    void QDropboxFile_Example();
+
 private:
-    void authorizeApplication(QDropbox *d);
-    bool connectDropbox(QDropbox* d, QDropbox::OAuthMethod m);
+    void authorizeApplication(QDropbox *dropbox);
+    bool connectDropbox(QDropbox* dropbox_object, QDropbox::OAuthMethod method);
 };
 
 #endif // QDROPBOXJSONTEST_H
