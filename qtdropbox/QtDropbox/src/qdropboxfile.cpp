@@ -41,21 +41,14 @@ bool QDropboxFile::isSequential() const
 
 bool QDropboxFile::open(QIODevice::OpenMode mode)
 {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::open(...)" << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::open(...)" << endl;
+    #endif
     if(!QIODevice::open(mode))
         return false;
 
-  /*  if(isMode(QIODevice::NotOpen))
-        return true; */
-
     if(_buffer == NULL)
         _buffer = new QByteArray();
-
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile: opening file" << endl;
-#endif
 
 	// clear buffer and reset position if this file was opened in write mode
 	// with truncate - or if append was not set
@@ -63,18 +56,18 @@ bool QDropboxFile::open(QIODevice::OpenMode mode)
 	   (isMode(QIODevice::Truncate) || !isMode(QIODevice::Append))
 	  )
     {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile: _buffer cleared." << endl;
-#endif
         _buffer->clear();
 		_position = 0;
+        #ifdef QTDROPBOX_DEBUG
+            qDebug() << "QDropboxFile: _buffer cleared." << endl;
+        #endif
     }
     else
     {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile: reading file content" << endl;
-#endif
-        if(!getFileContent(_filename))
+        #ifdef QTDROPBOX_DEBUG
+            qDebug() << "QDropboxFile: reading file content" << endl;
+        #endif
+        if(getFileContent(_filename) == false)
             return false;
 
 		if(isMode(QIODevice::WriteOnly)) // write mode here means append
@@ -93,13 +86,11 @@ void QDropboxFile::close()
 	if(isMode(QIODevice::WriteOnly))
 		flush();
 	QIODevice::close();
-	return;
 }
 
 void QDropboxFile::setApi(QDropbox *dropbox)
 {
     _api = dropbox;
-	return;
 }
 
 QDropbox *QDropboxFile::api()
@@ -110,7 +101,6 @@ QDropbox *QDropboxFile::api()
 void QDropboxFile::setFilename(QString filename)
 {
     _filename = filename;
-    return;
 }
 
 QString QDropboxFile::filename()
@@ -271,12 +261,12 @@ bool QDropboxFile::isMode(QIODevice::OpenMode mode)
 {
     return ( (openMode()&mode) == mode );
 }
-
+//TO DO: Change this function to throwing.
 bool QDropboxFile::getFileContent(QString filename)
 {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::getFileContent(...)" << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::getFileContent(...)" << endl;
+    #endif
     QUrl request;
     request.setUrl(QDROPBOXFILE_CONTENT_URL, QUrl::StrictMode);
     request.setPath(QString("/%1/files/%2")
@@ -296,9 +286,9 @@ bool QDropboxFile::getFileContent(QString filename)
 
     request.setQuery(query);
 
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::getFileContent " << request.toString() << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::getFileContent " << request.toString() << endl;
+    #endif
 
     QNetworkRequest rq(request);
     QNetworkReply *reply = _conManager.get(rq);
@@ -310,18 +300,16 @@ bool QDropboxFile::getFileContent(QString filename)
 
     if(lastErrorCode != 0)
     {
-#ifdef QTDROPBOX_DEBUG
-        qDebug() << "QDropboxFile::getFileContent ReadError: " << lastErrorCode << lastErrorMessage << endl;
-#endif
 		if(lastErrorCode ==  QDROPBOX_ERROR_FILE_NOT_FOUND)
 		{
+            qDebug() << "QDropboxFile::getFileContent: file does not exist";
 			_buffer->clear();
-#ifdef QTDROPBOX_DEBUG
-        qDebug() << "QDropboxFile::getFileContent: file does not exist" << endl;
-#endif
 		}
 		else
+        {
+            qDebug() << "QDrFile::getFileContent ReadError: " << lastErrorCode << lastErrorMessage;
 			return false;
+        }
     }
 
     return true;
@@ -512,7 +500,6 @@ void QDropboxFile::_init(QDropbox *api, QString filename, qint64 bufferTh)
     lastErrorMessage  = "";
     _position         = 0;
     _currentThreshold = 0;
-    return;
 }
 
 
@@ -533,10 +520,10 @@ bool QDropboxFile::hasChanged()
 	}
 
 	QDropboxFileInfo serverMetadata = _api->requestMetadataAndWait(_filename);
-#ifdef QTDROPBOX_DEBUG
-	qDebug() << "QDropboxFile::hasChanged() local  revision hash = " << _metadata->revisionHash() << endl;
-	qDebug() << "QDropboxFile::hasChanged() remote revision hash = " << serverMetadata.revisionHash() << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::hasChanged() local  revision hash = " << _metadata->revisionHash() << endl;
+        qDebug() << "QDropboxFile::hasChanged() remote revision hash = " << serverMetadata.revisionHash() << endl;
+    #endif
 	return serverMetadata.revisionHash().compare(_metadata->revisionHash())!=0;
 }
 
@@ -546,7 +533,6 @@ void QDropboxFile::obtainMetadata()
 	_metadata = new QDropboxFileInfo(_api->requestMetadataAndWait(_filename).strContent(), this);
 	if(!_metadata->isValid())
 		_metadata->clear();
-	return;
 }
 
 QList<QDropboxFileInfo> QDropboxFile::revisions(int max)

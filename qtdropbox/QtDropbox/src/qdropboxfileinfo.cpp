@@ -62,18 +62,15 @@ void QDropboxFileInfo::dataFromJson()
 	// create content list
 	if(_isDir)
 	{
-#ifdef QTDROPBOX_DEBUG
-	  qDebug() << "fileinfo: generating contents list";
-#endif
 	  _content = new QList<QDropboxFileInfo>();
 	  QStringList contentsArray = getArray("contents");
-	  for(qint32 i = 0; i<contentsArray.size(); ++i)
+
+      for(qint32 i = 0; i < contentsArray.size(); ++i)
 	  {
 	    QDropboxFileInfo contentInfo(contentsArray.at(i));
-		if(!contentInfo.isValid())
-		  continue;
-		
-		_content->append(contentInfo);
+
+        if(contentInfo.isValid())
+            _content->append(contentInfo);
 	  }
 	}
 
@@ -86,8 +83,8 @@ void QDropboxFileInfo::_init()
     _revision       = 0;
     _thumbExists    = false;
     _bytes          = 0;
-    _modified       = QDateTime::currentDateTime();
-    _clientModified = QDateTime::currentDateTime();
+    _modified       = QDateTime(QDate(1900, 01, 01));
+    _clientModified = QDateTime(QDate(1900, 01, 01));
     _icon           = "";
     _root           = "";
 	_path           = "";
@@ -168,11 +165,7 @@ QString QDropboxFileInfo::size() const
 QList<QDropboxFileInfo> QDropboxFileInfo::contents() const
 {
    if(_content == NULL || !isDir())
-   {
-     QList<QDropboxFileInfo> l;
-	 l.clear();
-     return l;
-   }
+     return {};
    
    return *_content;
 }

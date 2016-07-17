@@ -67,7 +67,7 @@ public:
     QDropboxFile(QString filename, QDropbox* api, QObject* parent = 0);
 
     /*!
-      This deconstructor cleans up on destruction of the object.
+      This destructor cleans up on destruction of the object.
      */
     ~QDropboxFile();
 
