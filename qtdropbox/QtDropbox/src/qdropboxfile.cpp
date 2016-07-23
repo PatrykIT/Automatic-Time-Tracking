@@ -323,11 +323,10 @@ void QDropboxFile::rplyFileContent(QNetworkReply *rply)
     QString resp_str;
     QDropboxJson json;
 
-#ifdef QTDROPBOX_DEBUG
-    resp_str = QString(response.toHex());
-    qDebug() << "QDropboxFile::rplyFileContent response = " << resp_str << endl;
-
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        resp_str = QString(response.toHex());
+        qDebug() << "QDropboxFile::rplyFileContent response = " << resp_str << endl;
+    #endif
 
     switch(rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
     {
@@ -341,30 +340,32 @@ void QDropboxFile::rplyFileContent(QNetworkReply *rply)
         resp_str = QString(response);
         json.parseString(response.trimmed());
         lastErrorCode = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileContent jason.valid = " << json.isValid() << endl;
-#endif
+
+        #ifdef QTDROPBOX_DEBUG
+            qDebug() << "QDropboxFile::rplyFileContent jason.valid = " << json.isValid() << endl;
+        #endif
+
         if(json.isValid())
             lastErrorMessage = json.getString("error");
         else
             lastErrorMessage = "";
         return;
-        break;
+
     default:
         break;
     }
 
     _buffer->clear();
     _buffer->append(response);
+
     emit readyRead();
-    return;
 }
 
 void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
 {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileWrite(...)" << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::rplyFileWrite(...)" << endl;
+    #endif
 
     lastErrorCode = 0;
 
@@ -372,11 +373,10 @@ void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
     QString resp_str;
     QDropboxJson json;
 
-#ifdef QTDROPBOX_DEBUG
-    resp_str = response;
-    qDebug() << "QDropboxFile::rplyFileWrite response = " << resp_str << endl;
-
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        resp_str = response;
+        qDebug() << "QDropboxFile::rplyFileWrite response = " << resp_str << endl;
+    #endif
 
     switch(rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
     {
@@ -390,15 +390,17 @@ void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
         resp_str = QString(response);
         json.parseString(response.trimmed());
         lastErrorCode = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileWrite jason.valid = " << json.isValid() << endl;
-#endif
+
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::rplyFileWrite jason.valid = " << json.isValid() << endl;
+    #endif
+
         if(json.isValid())
             lastErrorMessage = json.getString("error");
         else
             lastErrorMessage = "";
         return;
-        break;
+
     default:
         delete _metadata;
 
@@ -409,7 +411,6 @@ void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
     }
 
     emit bytesWritten(_buffer->size());
-    return;
 }
 
 void QDropboxFile::startEventLoop()

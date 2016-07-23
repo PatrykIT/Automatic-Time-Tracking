@@ -35,9 +35,9 @@ void QDropboxJson::_init()
 
 void QDropboxJson::parseString(QString strJson)
 {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "parse string = " << strJson << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "parse string = " << strJson << endl;
+    #endif
 
     // clear all existing data
     emptyList();
@@ -48,15 +48,15 @@ void QDropboxJson::parseString(QString strJson)
     if(strJson.startsWith("{") == false ||
             strJson.endsWith("}") == false)
     {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "string does not start with { " << endl;
-#endif
+        #ifdef QTDROPBOX_DEBUG
+            qDebug() << "string does not start with { " << endl;
+        #endif
 
 		if(strJson.startsWith("[") && strJson.endsWith("]"))
 		{
-#ifdef QTDROPBOX_DEBUG
-			qDebug() << "JSON is anonymous array" << endl;
-#endif
+            #ifdef QTDROPBOX_DEBUG
+                        qDebug() << "JSON is anonymous array" << endl;
+            #endif
 			_anonymousArray = true;
 			// fix json to be parseable by the algorithm below
             strJson = "{\"_anonArray\":" + strJson + "}";
@@ -107,9 +107,9 @@ void QDropboxJson::parseString(QString strJson)
                 buffer += ":";
                 continue;
             }
-#ifdef QTDROPBOX_DEBUG
-            qDebug() << "key = " << buffer << endl;
-#endif
+        #ifdef QTDROPBOX_DEBUG
+                    qDebug() << "key = " << buffer << endl;
+        #endif
 
             key    = buffer.trimmed();
             buffer = "";
@@ -121,9 +121,9 @@ void QDropboxJson::parseString(QString strJson)
 				buffer += ',';
                 continue;
 			}
-#ifdef QTDROPBOX_DEBUG
-            qDebug() << "value = " << buffer << endl;
-#endif
+        #ifdef QTDROPBOX_DEBUG
+                    qDebug() << "value = " << buffer << endl;
+        #endif
             value       = buffer.trimmed();
             buffer      = "";
             isKey       = true;
@@ -169,9 +169,10 @@ void QDropboxJson::parseString(QString strJson)
 			 bool inString    = false;
 			 bool arrayEnd    = false;
              int arrayDepth = 0;
-			 int j = i+1;
+             int j = i + 1;
 			 buffer = "[";
-			 for(;!arrayEnd && j<strJson.size();++j)
+
+             for(; !arrayEnd && j<strJson.size() ;++j)
 			 {
 				 QChar arrC = strJson.at(j);
 				 switch(arrC.toLatin1())
@@ -224,9 +225,10 @@ void QDropboxJson::parseString(QString strJson)
 
         if(insertValue)
         {
-#ifdef QTDROPBOX_DEBUG
-            qDebug() << "insert value " << key << " with content = " << value.trimmed() << " and type = " << interpretType(value.trimmed()) << endl;
-#endif
+            #ifdef QTDROPBOX_DEBUG
+                        qDebug() << "insert value " << key << " with content = " << value.trimmed() << " and type = " << interpretType(value.trimmed()) << endl;
+            #endif
+
             qdropboxjson_entry e;
 			QString *valuePointer = new QString(value.trimmed());
 			e.value.value = valuePointer;
@@ -242,9 +244,9 @@ void QDropboxJson::parseString(QString strJson)
     // there's some key left
     if(key.compare(""))
     {
-#ifdef QTDROPBOX_DEBUG
-            qDebug() << "rest value = " << buffer << endl;
-#endif
+        #ifdef QTDROPBOX_DEBUG
+                    qDebug() << "rest value = " << buffer << endl;
+        #endif
         // but no value in the buffer -> json is invalid because a value is missing
         if(!buffer.compare(""))
         {
@@ -260,8 +262,6 @@ void QDropboxJson::parseString(QString strJson)
         }
 
     }
-
-    return;
 }
 
 void QDropboxJson::clear()
@@ -729,7 +729,7 @@ int QDropboxJson::compare(const QDropboxJson& other)
 	QMap<QString, qdropboxjson_entry> yourMap = other.valueMap;
 
 	QList<QString> keys = valueMap.keys();
-	for(int i=0; i<keys.size(); ++i)
+    for(int i = 0; i < keys.size(); ++i)
 	{
 		QString key = keys.at(i);
 		if(!yourMap.contains(key))
@@ -755,3 +755,38 @@ int QDropboxJson::compare(const QDropboxJson& other)
 
 	return 0;
 }
+
+QStringList QDropboxJson::Return_Value_of_Keys_from_Json(const QStringList &keys)
+{
+    QStringList value_keys;
+
+    for(QStringList::const_iterator key = keys.begin(); key != keys.end(); ++key)
+    {
+        value_keys.append(*key + ":" + *valueMap[*key].value.value);
+    }
+
+    return value_keys;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
