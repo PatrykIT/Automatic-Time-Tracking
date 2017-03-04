@@ -244,59 +244,59 @@ void QtDropboxTest::dropboxCase1()
  */
 void QtDropboxTest::dropboxCase2()
 {
-    try
-    {
-        QTextStream strout(stdout);
-        QDropbox dropbox(APP_KEY, APP_SECRET);
-        QVERIFY2(connectDropbox(&dropbox, QDropbox::Plaintext), "connection error");
+//    try
+//    {
+//        QTextStream strout(stdout);
+//        QDropbox dropbox(APP_KEY, APP_SECRET);
+//        QVERIFY2(connectDropbox(&dropbox, QDropbox::Plaintext), "connection error");
 
-        QString cursor = "";
-        bool hasMore = true;
-        QDropboxFileInfoMap file_cache;
+//        QString cursor = "";
+//        bool hasMore = true;
+//        QDropboxFileInfoMap file_cache;
 
-        strout << "requesting delta...\n";
-        do
-        {
-            QDropboxDeltaResponse delta_response = dropbox.requestDeltaAndWait(cursor, "");
-            cursor = delta_response.getNextCursor();
-            hasMore = delta_response.hasMore();
+//        strout << "requesting delta...\n";
+//        do
+//        {
+//            QDropboxDeltaResponse delta_response = dropbox.requestDeltaAndWait(cursor, "");
+//            cursor = delta_response.getNextCursor();
+//            hasMore = delta_response.hasMore();
 
-            const QDropboxDeltaEntryMap entries = delta_response.getEntries();
-            for(QDropboxDeltaEntryMap::const_iterator i = entries.begin(); i != entries.end(); i++)
-            {
-                if(i.value().isNull())
-                {
-                    qDebug() << "Iterator was empty: " << i.key();
-                    file_cache.remove(i.key());
-                }
-                else
-                {
-                    strout << "inserting file " << i.key() << "\n";
-                    file_cache.insert(i.key(), i.value());
-                }
-            }
+//            const QDropboxDeltaEntryMap entries = delta_response.getEntries();
+//            for(QDropboxDeltaEntryMap::const_iterator i = entries.begin(); i != entries.end(); i++)
+//            {
+//                if(i.value().isNull())
+//                {
+//                    qDebug() << "Iterator was empty: " << i.key();
+//                    file_cache.remove(i.key());
+//                }
+//                else
+//                {
+//                    strout << "inserting file " << i.key() << "\n";
+//                    file_cache.insert(i.key(), i.value());
+//                }
+//            }
 
-        } while (hasMore);
+//        } while (hasMore);
 
-        strout << "next cursor: " << cursor << "\n";
-        for(QDropboxFileInfoMap::const_iterator i = file_cache.begin(); i != file_cache.end(); i++)
-        {
-            strout << "File: " << i.key() << endl;
-            strout << "Last modified: " << i.value()->clientModified().toString() << endl;
-            strout << "Size: " << i.value()->size() << endl;
-            strout << "Path: " << i.value()->path() << endl;
-        }
+//        strout << "next cursor: " << cursor << "\n";
+//        for(QDropboxFileInfoMap::const_iterator i = file_cache.begin(); i != file_cache.end(); i++)
+//        {
+//            strout << "File: " << i.key() << endl;
+//            strout << "Last modified: " << i.value()->clientModified().toString() << endl;
+//            strout << "Size: " << i.value()->size() << endl;
+//            strout << "Path: " << i.value()->path() << endl;
+//        }
 
-        return;
-    }
-    catch(std::exception &e)
-    {
-        qDebug() << e.what();
-    }
-    catch(...)
-    {
-        qDebug() << "Unknown exception caught!";
-    }
+//        return;
+//    }
+//    catch(std::exception &e)
+//    {
+//        qDebug() << e.what();
+//    }
+//    catch(...)
+//    {
+//        qDebug() << "Unknown exception caught!";
+//    }
 }
 
 /**
@@ -371,7 +371,7 @@ bool QtDropboxTest::connectDropbox(QDropbox *dropbox_object, QDropbox::OAuthMeth
     {
         int i = 0;
         for(; i < 3; ++i) // we try three times
-        {   
+        {
             if(dropbox_object->error() == QDropbox::TokenExpired)
                 authorizeApplication(dropbox_object);
             else
@@ -406,19 +406,51 @@ bool QtDropboxTest::connectDropbox(QDropbox *dropbox_object, QDropbox::OAuthMeth
 
 void QtDropboxTest::QDropboxFile_Example()
 {
+//    QTextStream strout(stdout);
+//    QDropbox dropbox(APP_KEY, APP_SECRET);
+//    QVERIFY2(connectDropbox(&dropbox, QDropbox::Plaintext), "connection error");
+
+//    QString file_name = "DebuggerBSTZyzzWins.png";
+//    QString pre_string = "/dropbox/"; //or /sandbox/
+
+//    /* Checks whether we can get info about custom file in Dropbox. */
+//    QDropboxFile file_access (&dropbox, this);
+//    file_access.setFilename(pre_string + file_name);
+//    QVERIFY2(file_access.filename() == pre_string + file_name, "Filename not set correctly!");
+//    file_access.open(QIODevice::ReadOnly); //sends GET request(file/filename) and saves medatada
+//    QDropboxFileInfo metadata = file_access.metadata();
+//    qDebug() << "Info from metadata: " << metadata.size();
+//    qDebug() << "Last modified: " << metadata.clientModified();
+
+
+
+
+//   // dropbox.Request_Download_File(pre_string + file_name);
+//    dropbox.Request_Link_To_File(file_name, true);
+}
+
+void QtDropboxTest::Upload_File()
+{
+    qDebug() << "Uploading a file.";
     QTextStream strout(stdout);
     QDropbox dropbox(APP_KEY, APP_SECRET);
     QVERIFY2(connectDropbox(&dropbox, QDropbox::Plaintext), "connection error");
 
-    QDropboxFile file_access (&dropbox, this);
-    file_access.setFilename("/dropbox//DebuggerBSTZyzzWins.png"); //or /sandbox/
-    file_access.open(QIODevice::ReadOnly); //sends GET request(file/filename) and saves medatada
 
-    QDropboxFileInfo metadata = file_access.metadata();
+    QByteArray data;
+    QFile file("/home/patryk/Inspirational/Sylwester.jpg");
+    file.open(QIODevice::ReadWrite);
+    data = file.readAll();
+    qDebug() << data.size();
 
-    qDebug() << "Info from metadata: " << metadata.size();
-    qDebug() << "Last modified: " << metadata.clientModified();
+    char *file_char = data.data();
+    QDropboxFile dropbox_file("/home/patryk/Inspirational/Sylwester.jpg", &dropbox);
+    dropbox_file.open(QIODevice::WriteOnly);
+    dropbox_file.writeData(file_char, file.size());
+    dropbox_file.putFile();
+
+    //Write separate function to uploading files. It will allocate resources etc.
+
+
 
 }
-
-//QTEST_MAIN(QtDropboxTest)

@@ -24,6 +24,7 @@ const qdropboxjson_entry_type QDROPBOXJSON_TYPE_BOOL    = 'B';
 const qdropboxjson_entry_type QDROPBOXJSON_TYPE_UINT    = 'U';
 const qdropboxjson_entry_type QDROPBOXJSON_TYPE_UNKNOWN = '?';
 
+class QDropbox;
 class QDropboxJson;
 
 //! Keeps values of a JSON
@@ -244,7 +245,13 @@ public:
 	  \returns 0 if the JSON objects are equals
 	*/
 	int compare(const QDropboxJson& other);
-    
+
+    /**
+     * @brief Returns list of strings in form : key : value
+     * @param keys - keys to get values from
+     */
+    QStringList Return_Value_of_Keys_from_Json(const QStringList &keys);
+
 protected:
 		bool valid;
 
@@ -252,10 +259,10 @@ private:
     QMap<QString, qdropboxjson_entry> valueMap;
 	bool _anonymousArray;
 
-    void emptyList();
     qdropboxjson_entry_type interpretType(QString value);
 	int parseSubJson(QString str, int start, qdropboxjson_entry *jsonEntry);
 	void _init();
+    void emptyList();
 };
 
 #endif // QDROPBOXJSON_H

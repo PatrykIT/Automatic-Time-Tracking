@@ -11,6 +11,11 @@
 
 #ifndef QDROPBOX_HTTP_ERROR_CODES
 #define QDROPBOX_HTTP_ERROR_CODES
+
+/* TO DO: Make it enum, or encapsulate it somewhere in class */
+/**
+ * @brief HTTP Status Codes
+ */
 const qint32 QDROPBOX_ERROR_BAD_INPUT           = 400;
 const qint32 QDROPBOX_ERROR_EXPIRED_TOKEN       = 401;
 const qint32 QDROPBOX_ERROR_BAD_OAUTH_REQUEST   = 403;

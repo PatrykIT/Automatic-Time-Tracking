@@ -19,6 +19,11 @@ using std::endl;
 
 std::vector<std::pair<Item, Manager::Process_Statistics>> Manager::objects;
 
+namespace FLAGS
+{
+    constexpr int LOGS_ENABLED = 0;
+}
+
 Manager::Manager(QObject *parent) : QObject(parent)
 {
     objects.reserve(128);
@@ -47,10 +52,13 @@ Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexce
 
 /**
  * @brief Main observing loop.
+ * Run as a separate thread, created in MainWindow (GUI form) constructor.
  */
 void Manager::Start()
 {
-    /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
+    //TO DO: Remove this sleep! There is a bug, that without this sleep my GUI window is frozen for ~1 second after start.
+    //It has 100% got to do with signal Show_Icon, because if I disable the signal\slot connection, then it works correctly, without timers.
+    //If I enable connection but comment out "emit" line then it also works correctly, without timers.
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     try
@@ -79,7 +87,7 @@ void Manager::Start()
                 /* 2-way check */
                 Add_New_Observed_Objects(processes_names);
 
-                //LOGS("\n");
+                LOGS("\n");
                 ++counter;
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -121,11 +129,11 @@ std::vector<std::string> Manager::Observe()
 {
     std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,8\\}'";
     std::string system_call_result = System_Call(command);
-    //LOGS("wmctrl output: " + system_call_result);
+    LOGS("wmctrl output: " + system_call_result);
 
     if(system_call_result.empty())
     {
-        //LOGS("ERROR! Wmctrl output is empty.");
+        LOGS("ERROR! Wmctrl output is empty.");
         /* Return an empty vector. */
         return std::vector<std::string>();
     }
@@ -243,7 +251,7 @@ std::vector<std::string> Manager::Split_Command_Output_to_Strings(const std::str
 std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_numbers) const
 {
     std::vector<std::string> processes_names;
-    //std::string log_string = "";
+    std::string log_string = "";
 
     /* Call 'ps' syscall to get processes names based on their PIDs */
     for(auto PID_nr = pid_numbers.begin(); PID_nr != pid_numbers.end(); ++PID_nr)
@@ -254,18 +262,18 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
         /* If output is bad, ignore it. */
         if(process_name.empty() || process_name.back() != '\n')
         {
-            //log_string.append(" " + std::string("ERROR! Process doesn't have a newline at the end or is empty. Pid number: ") + std::to_string(*it));
+            log_string.append(" " + std::string("ERROR! Process doesn't have a newline at the end or is empty. Pid number: ") + std::to_string(*PID_nr));
             continue;
         }
         /* Remove new line from the end of string. */
         process_name.pop_back();
 
-        //log_string.append(" " + process_name);
+        log_string.append(" " + process_name);
 
         processes_names.emplace_back(std::move(process_name));
     }
 
-    //LOGS("ps output: " + log_string);
+    LOGS("ps output: " + log_string);
     return processes_names;
 }
 
@@ -346,6 +354,7 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
  */
 void Manager::Save_Statistics_to_File()
 {
+    /* Commented to save HDD while working on other things. This functionality works good. :)
     file_stats.open(path_to_stats_file, std::fstream::out);
     if(!file_stats.is_open())
         throw std::ios_base::failure("Couldn't open a file in order to save statistics: " + path_to_stats_file);
@@ -359,6 +368,7 @@ void Manager::Save_Statistics_to_File()
         file_stats << object.first.name << " ::: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << "\n";
     }
     file_stats.close();
+    */
 }
 
 /**
@@ -383,7 +393,9 @@ void Manager::Load_Statistics_from_File()
 
 
             if(item.icon != nullptr)
+            {
                 emit Show_Icon(*item.icon);
+            }
 
             Add_Item_to_Observe(std::move(item), std::move(statistics));
         }
@@ -415,7 +427,7 @@ int Manager::Process_Statistics::Parse_Seconds()
     int seconds = std::chrono::duration_cast<Process_Statistics::seconds>(end_time - begin_time).count();
     seconds += total_seconds;
 
-    while(seconds > 59)
+    while (seconds > 59)
     {
         ++total_minutes;
         seconds = seconds - 60;
@@ -430,7 +442,7 @@ int Manager::Process_Statistics::Parse_Seconds()
  */
 int Manager::Process_Statistics::Parse_Minutes()
 {
-    while(total_minutes > 59)
+    while (total_minutes > 59)
     {
         ++total_hours;
         total_minutes = total_minutes - 60;
@@ -506,24 +518,27 @@ std::once_flag Debug_Date_Once;
 
 void Manager::LOGS(const std::__cxx11::string &info) const
 {
-    static std::fstream log_file;
-    static std::string path_to_log_file = "Logs.txt";
-
-    log_file.open(path_to_log_file, std::fstream::out | std::fstream::app);
-
-    std::call_once(Debug_Date_Once, [this] ()
+    if (FLAGS::LOGS_ENABLED == 1)
     {
-        /* Get current time */
-        time_t t = time(0);
-        localtime(&t);
+        static std::fstream log_file;
+        static std::string path_to_log_file = "Logs.txt";
 
-        /* Cast time to string */
-        char *date = ctime(&t);
-        log_file << "\t\t\t\t\t" << date;
-    } );
+        log_file.open(path_to_log_file, std::fstream::out | std::fstream::app);
 
-    log_file << info << endl;
-    log_file.close();
+        std::call_once(Debug_Date_Once, [this] ()
+        {
+            /* Get current time */
+            time_t t = time(0);
+            localtime(&t);
+
+            /* Cast time to string */
+            char *date = ctime(&t);
+            log_file << "\t\t\t\t\t" << date;
+        } );
+
+        log_file << info << endl;
+        log_file.close();
+    }
 }
 
 

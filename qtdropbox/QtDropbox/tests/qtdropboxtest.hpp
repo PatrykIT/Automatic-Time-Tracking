@@ -40,6 +40,7 @@ private Q_SLOTS:
 
     /* My tests */
     void QDropboxFile_Example();
+    void Upload_File();
 
 private:
     void authorizeApplication(QDropbox *dropbox);

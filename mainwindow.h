@@ -31,9 +31,9 @@ private:
 
 private slots:
     void on_Start_Stats_Button_clicked();
-    void Show_Icon(QPixmap &icon);
+    //void Show_Icon(const QPixmap icon); //TO DO: Can we make it private again?
 public slots:
-
+    void Show_Icon(const QPixmap icon); //Arguments are always copied when you have a queued connection, so no need for reference.
 };
 
 #endif // MAINWINDOW_H

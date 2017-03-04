@@ -50,8 +50,7 @@ bool QDropboxFile::open(QIODevice::OpenMode mode)
     if(_buffer == NULL)
         _buffer = new QByteArray();
 
-	// clear buffer and reset position if this file was opened in write mode
-	// with truncate - or if append was not set
+    /* Clear buffer and reset position if this file was opened in write mode with truncate, or if append was not set */
 	if(isMode(QIODevice::WriteOnly) && 
 	   (isMode(QIODevice::Truncate) || !isMode(QIODevice::Append))
 	  )
@@ -127,10 +126,9 @@ bool QDropboxFile::event(QEvent *event)
 
 void QDropboxFile::setFlushThreshold(qint64 num)
 {
-    if(num<0)
+    if(num < 0)
         num = 0;
     _bufferThreshold = num;
-    return;
 }
 
 qint64 QDropboxFile::flushThreshold()
@@ -141,7 +139,6 @@ qint64 QDropboxFile::flushThreshold()
 void QDropboxFile::setOverwrite(bool overwrite)
 {
     _overwrite = overwrite;
-    return;
 }
 
 bool QDropboxFile::overwrite()
@@ -198,8 +195,8 @@ qint64 QDropboxFile::writeData(const char *data, qint64 len)
 
 	int written_bytes = len;
 
-	if(_buffer->size() != oldlen+len)
-		written_bytes = (oldlen-_buffer->size());
+    if(_buffer->size() != oldlen + len)
+        written_bytes = (oldlen - _buffer->size());
 
 	_position += written_bytes;
 
@@ -254,14 +251,13 @@ void QDropboxFile::connectSignals()
 {
     connect(&_conManager, SIGNAL(finished(QNetworkReply*)),
             this, SLOT(networkRequestFinished(QNetworkReply*)));
-    return;
 }
 
 bool QDropboxFile::isMode(QIODevice::OpenMode mode)
 {
     return ( (openMode()&mode) == mode );
 }
-//TO DO: Change this function to throwing.
+
 bool QDropboxFile::getFileContent(QString filename)
 {
     #ifdef QTDROPBOX_DEBUG
@@ -323,48 +319,35 @@ void QDropboxFile::rplyFileContent(QNetworkReply *rply)
     QString resp_str;
     QDropboxJson json;
 
-#ifdef QTDROPBOX_DEBUG
-    resp_str = QString(response.toHex());
-    qDebug() << "QDropboxFile::rplyFileContent response = " << resp_str << endl;
+    #ifdef QTDROPBOX_DEBUG
+        resp_str = QString(response.toHex());
+        qDebug() << "QDropboxFile::rplyFileContent response = " << resp_str << endl;
+    #endif
 
-#endif
-
-    switch(rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+    int http_status = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if(http_status >= 400 && http_status <= 507)
     {
-    case QDROPBOX_ERROR_BAD_INPUT:
-    case QDROPBOX_ERROR_EXPIRED_TOKEN:
-    case QDROPBOX_ERROR_BAD_OAUTH_REQUEST:
-    case QDROPBOX_ERROR_FILE_NOT_FOUND:
-    case QDROPBOX_ERROR_WRONG_METHOD:
-    case QDROPBOX_ERROR_REQUEST_CAP:
-    case QDROPBOX_ERROR_USER_OVER_QUOTA:
-        resp_str = QString(response);
         json.parseString(response.trimmed());
         lastErrorCode = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileContent jason.valid = " << json.isValid() << endl;
-#endif
+
         if(json.isValid())
             lastErrorMessage = json.getString("error");
         else
             lastErrorMessage = "";
         return;
-        break;
-    default:
-        break;
     }
 
     _buffer->clear();
     _buffer->append(response);
+
     emit readyRead();
-    return;
 }
 
 void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
 {
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileWrite(...)" << endl;
-#endif
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "QDropboxFile::rplyFileWrite(...)" << endl;
+    #endif
 
     lastErrorCode = 0;
 
@@ -372,44 +355,31 @@ void QDropboxFile::rplyFileWrite(QNetworkReply *rply)
     QString resp_str;
     QDropboxJson json;
 
-#ifdef QTDROPBOX_DEBUG
-    resp_str = response;
-    qDebug() << "QDropboxFile::rplyFileWrite response = " << resp_str << endl;
+    #ifdef QTDROPBOX_DEBUG
+        resp_str = response;
+        qDebug() << "QDropboxFile::rplyFileWrite response = " << resp_str << endl;
+    #endif
 
-#endif
-
-    switch(rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt())
+    int http_status = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if(http_status >= 400 && http_status <= 507)
     {
-    case QDROPBOX_ERROR_BAD_INPUT:
-    case QDROPBOX_ERROR_EXPIRED_TOKEN:
-    case QDROPBOX_ERROR_BAD_OAUTH_REQUEST:
-    case QDROPBOX_ERROR_FILE_NOT_FOUND:
-    case QDROPBOX_ERROR_WRONG_METHOD:
-    case QDROPBOX_ERROR_REQUEST_CAP:
-    case QDROPBOX_ERROR_USER_OVER_QUOTA:
-        resp_str = QString(response);
         json.parseString(response.trimmed());
         lastErrorCode = rply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-#ifdef QTDROPBOX_DEBUG
-    qDebug() << "QDropboxFile::rplyFileWrite jason.valid = " << json.isValid() << endl;
-#endif
+
         if(json.isValid())
             lastErrorMessage = json.getString("error");
         else
             lastErrorMessage = "";
         return;
-        break;
-    default:
-        delete _metadata;
-
-        _metadata = new QDropboxFileInfo{QString{response}.trimmed(), this};
-        if (!_metadata->isValid())
-            _metadata->clear();
-        break;
     }
 
+    delete _metadata;
+
+    _metadata = new QDropboxFileInfo{QString{response}.trimmed(), this};
+    if (!_metadata->isValid())
+        _metadata->clear();
+
     emit bytesWritten(_buffer->size());
-    return;
 }
 
 void QDropboxFile::startEventLoop()
@@ -420,7 +390,6 @@ void QDropboxFile::startEventLoop()
     if(_evLoop == NULL)
         _evLoop = new QEventLoop(this);
     _evLoop->exec();
-    return;
 }
 
 void QDropboxFile::stopEventLoop()
@@ -431,7 +400,6 @@ void QDropboxFile::stopEventLoop()
     if(_evLoop == NULL)
         return;
     _evLoop->exit();
-    return;
 }
 
 bool QDropboxFile::putFile()
@@ -443,6 +411,7 @@ bool QDropboxFile::putFile()
 
     QUrl request;
     request.setUrl(QDROPBOXFILE_CONTENT_URL, QUrl::StrictMode);
+    //request.setUrl("https://content.dropboxapi.com", QUrl::StrictMode);
     request.setPath(QString("/%1/files_put/%2")
                     .arg(_api->apiVersion().left(1))
                     .arg(_filename));
@@ -454,7 +423,7 @@ bool QDropboxFile::putFile()
     urlQuery.addQueryItem("oauth_timestamp", QString::number((int) QDateTime::currentMSecsSinceEpoch()/1000));
     urlQuery.addQueryItem("oauth_token", _api->token());
     urlQuery.addQueryItem("oauth_version", _api->apiVersion());
-    urlQuery.addQueryItem("overwrite", (_overwrite?"true":"false"));
+    urlQuery.addQueryItem("overwrite", (_overwrite ? "true" : "false"));
 
     QString signature = _api->oAuthSign(request);
     urlQuery.addQueryItem("oauth_signature", signature);
@@ -475,9 +444,7 @@ bool QDropboxFile::putFile()
 
     if(lastErrorCode != 0)
     {
-#ifdef QTDROPBOX_DEBUG
         qDebug() << "QDropboxFile::putFile WriteError: " << lastErrorCode << lastErrorMessage << endl;
-#endif
         return false;
     }
 
@@ -524,7 +491,7 @@ bool QDropboxFile::hasChanged()
         qDebug() << "QDropboxFile::hasChanged() local  revision hash = " << _metadata->revisionHash() << endl;
         qDebug() << "QDropboxFile::hasChanged() remote revision hash = " << serverMetadata.revisionHash() << endl;
     #endif
-	return serverMetadata.revisionHash().compare(_metadata->revisionHash())!=0;
+    return serverMetadata.revisionHash().compare(_metadata->revisionHash()) != 0;
 }
 
 void QDropboxFile::obtainMetadata()

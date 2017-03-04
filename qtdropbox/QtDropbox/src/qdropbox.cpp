@@ -140,41 +140,44 @@ void QDropbox::requestFinished(int nr, QNetworkReply *rply)
     {
     case QDROPBOX_ERROR_BAD_INPUT:
         errorState = QDropbox::BadInput;
-        errorText  = "";
+        errorText  = "QDROPBOX_ERROR_BAD_INPUT";
         emit errorOccured(errorState);
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_EXPIRED_TOKEN:
         errorState = QDropbox::TokenExpired;
-        errorText  = "";
+        errorText  = "QDROPBOX_ERROR_EXPIRED_TOKEN";
         emit tokenExpired();
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_BAD_OAUTH_REQUEST:
         errorState = QDropbox::BadOAuthRequest;
-        errorText  = "";
+        errorText  = "QDROPBOX_ERROR_BAD_OAUTH_REQUEST";
         emit errorOccured(errorState);
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_FILE_NOT_FOUND:
-        emit fileNotFound();
+        errorState = QDropbox::FileNotFound;
+        errorText = "QDROPBOX_ERROR_FILE_NOT_FOUND";
+        emit errorOccured(errorState);
+        //emit fileNotFound();
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_WRONG_METHOD:
         errorState = QDropbox::WrongHttpMethod;
-        errorText  = "";
+        errorText  = "QDROPBOX_ERROR_WRONG_METHOD";
         emit errorOccured(errorState);
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_REQUEST_CAP:
         errorState = QDropbox::MaxRequestsExceeded;
-        errorText = "";
+        errorText = "QDROPBOX_ERROR_REQUEST_CAP";
         emit errorOccured(errorState);
         checkReleaseEventLoop(nr);
         return;
     case QDROPBOX_ERROR_USER_OVER_QUOTA:
         errorState = QDropbox::UserOverQuota;
-        errorText = "";
+        errorText = "QDROPBOX_ERROR_USER_OVER_QUOTA";
         emit errorOccured(errorState);
         checkReleaseEventLoop(nr);
         return;
@@ -205,6 +208,7 @@ void QDropbox::requestFinished(int nr, QNetworkReply *rply)
     bool delayed_finish = false;
     int delayed_nr;
 
+    /* 302 is HTTP Redirect Status */
     if(rply->attribute(QNetworkRequest::HttpStatusCodeAttribute) == 302) //TO DO: Check if this could be an enum, or define somewhere 302 = xxx
     {
         // redirection handling
@@ -286,6 +290,14 @@ void QDropbox::requestFinished(int nr, QNetworkReply *rply)
         case QDROPBOX_REQ_BDELTA:
             parseBlockingDelta(response);
             break;
+        case QDROPBOX_REQ_FILE_DOWNLOAD:
+            Download_File(response);
+            break;
+        case QDROPBOX_REQ_MEDIA:
+            Get_Media(response);
+            break;
+        case QDROPBOX_REQ_BMEDIA:
+            Get_Blocking_Media(response);
         default:
             errorState  = QDropbox::ResponseToUnknownRequest;
             errorText   = "Received a response to an unknown request";
@@ -312,14 +324,13 @@ void QDropbox::requestFinished(int nr, QNetworkReply *rply)
 		removeRequestFromMap(nr);
         emit operationFinished(nr);
     }
-
-    return;
 }
 
 void QDropbox::networkReplyFinished(QNetworkReply *rply)
 {
-    int reqnr = replynrMap[rply];
-    requestFinished(reqnr, rply);
+    int request_nr = replynrMap[rply];
+
+    requestFinished(request_nr, rply);
     rply->deleteLater(); // release memory
 }
 
@@ -477,10 +488,10 @@ int QDropbox::responseDropboxLogin(QString response, int reqnr)
     int lnr, cnr;
     if(!xml.setContent(response, false, &err, &lnr, &cnr))
     {
-#ifdef QTDROPBOX_DEBUG
-        qDebug() << "invalid xml (" << lnr << "," << cnr << "): " << err << "dump:" << endl;
-        qDebug() << xml.toString() << endl;
-#endif
+        #ifdef QTDROPBOX_DEBUG
+                qDebug() << "invalid xml (" << lnr << "," << cnr << "): " << err << "dump:" << endl;
+                qDebug() << xml.toString() << endl;
+        #endif
         return 0;
     }
     return 0;
@@ -490,7 +501,6 @@ void QDropbox::responseAccessToken(QString response)
 {
     parseToken(response);
     emit accessTokenFinished(oauthToken, oauthTokenSecret);
-    return;
 }
 
 QString QDropbox::signatureMethodString()
@@ -522,7 +532,8 @@ void QDropbox::parseToken(QString response)
         emit errorOccured(errorState);
         return;
     }
-
+    /* Sample response with POST /outh/access_token:
+     * oauth_token_secret=95grkd9na7hm&oauth_token=ccl4li5n1q9b&uid=100 */
     if(!split.at(0).startsWith("oauth_token_secret") ||
             !split.at(1).startsWith("oauth_token"))
     {
@@ -596,6 +607,7 @@ void QDropbox::parseMetadata(QString response)
     QDropboxJson json;
     json.parseString(response);
     _tempJson.parseString(response);
+
     if(!json.isValid())
     {
         errorState = QDropbox::APIError;
@@ -699,6 +711,7 @@ QString QDropbox::apiVersion() const
     return _version;
 }
 
+//https://www.dropbox.com/developers-v1/core/docs#request-token
 int QDropbox::requestToken(bool blocking)
 {
 	clearError();
@@ -779,6 +792,7 @@ QUrl QDropbox::authorizeLink()
     return link;
 }
 
+//https://www.dropbox.com/developers-v1/core/docs#access-token
 int QDropbox::requestAccessToken(bool blocking)
 {
 	clearError();
@@ -847,21 +861,20 @@ void QDropbox::requestAccountInfo(bool blocking)
     timestamp = QDateTime::currentMSecsSinceEpoch()/1000;
 
     QUrl url (apiurl);
-    //url.setUrl(apiurl.toString());
 
-    QUrlQuery urlQuery;
-    urlQuery.addQueryItem("oauth_consumer_key",_appKey);
-    urlQuery.addQueryItem("oauth_nonce", nonce);
-    urlQuery.addQueryItem("oauth_signature_method", signatureMethodString());
-    urlQuery.addQueryItem("oauth_timestamp", QString::number(timestamp));
-    urlQuery.addQueryItem("oauth_token", oauthToken);
-    urlQuery.addQueryItem("oauth_version", _version);
+    QUrlQuery query;
+    query.addQueryItem("oauth_consumer_key",_appKey);
+    query.addQueryItem("oauth_nonce", nonce);
+    query.addQueryItem("oauth_signature_method", signatureMethodString());
+    query.addQueryItem("oauth_timestamp", QString::number(timestamp));
+    query.addQueryItem("oauth_token", oauthToken);
+    query.addQueryItem("oauth_version", _version);
 
     QString signature = oAuthSign(url);
-    urlQuery.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
+    query.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
 
     url.setPath(QString("/%1/account/info").arg(_version.left(1)));
-    url.setQuery(urlQuery);
+    url.setQuery(query);
 
     int reqnr = sendRequest(url);
     if(blocking)
@@ -871,7 +884,6 @@ void QDropbox::requestAccountInfo(bool blocking)
     }
     else
         requestMap[reqnr].type = QDROPBOX_REQ_ACCINFO;
-    return;
 }
 
 QDropboxAccount QDropbox::requestAccountInfoAndWait()
@@ -898,18 +910,18 @@ void QDropbox::requestMetadata(QString file, bool blocking)
     QUrl url;
     url.setUrl(apiurl.toString());
 
-    QUrlQuery urlQuery;
-    urlQuery.addQueryItem("oauth_consumer_key",_appKey);
-    urlQuery.addQueryItem("oauth_nonce", nonce);
-    urlQuery.addQueryItem("oauth_signature_method", signatureMethodString());
-    urlQuery.addQueryItem("oauth_timestamp", QString::number(timestamp));
-    urlQuery.addQueryItem("oauth_token", oauthToken);
-    urlQuery.addQueryItem("oauth_version", _version);
+    QUrlQuery query;
+    query.addQueryItem("oauth_consumer_key",_appKey);
+    query.addQueryItem("oauth_nonce", nonce);
+    query.addQueryItem("oauth_signature_method", signatureMethodString());
+    query.addQueryItem("oauth_timestamp", QString::number(timestamp));
+    query.addQueryItem("oauth_token", oauthToken);
+    query.addQueryItem("oauth_version", _version);
 
     QString signature = oAuthSign(url);
-    urlQuery.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
+    query.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
 
-    url.setQuery(urlQuery);
+    url.setQuery(query);
     url.setPath(QString("/%1/metadata/%2").arg(_version.left(1), file));
 
     int reqnr = sendRequest(url);
@@ -943,19 +955,19 @@ void QDropbox::requestSharedLink(QString file, bool blocking)
     QUrl url;
     url.setUrl(apiurl.toString());
 
-    QUrlQuery urlQuery;
-    urlQuery.addQueryItem("oauth_consumer_key",_appKey);
-    urlQuery.addQueryItem("oauth_nonce", nonce);
-    urlQuery.addQueryItem("oauth_signature_method", signatureMethodString());
-    urlQuery.addQueryItem("oauth_timestamp", QString::number(timestamp));
-    urlQuery.addQueryItem("oauth_token", oauthToken);
-    urlQuery.addQueryItem("oauth_version", _version);
+    QUrlQuery query;
+    query.addQueryItem("oauth_consumer_key",_appKey);
+    query.addQueryItem("oauth_nonce", nonce);
+    query.addQueryItem("oauth_signature_method", signatureMethodString());
+    query.addQueryItem("oauth_timestamp", QString::number(timestamp));
+    query.addQueryItem("oauth_token", oauthToken);
+    query.addQueryItem("oauth_version", _version);
 
     QString signature = oAuthSign(url);
-    urlQuery.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
+    query.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
 
     url.setPath(QString("/%1/shares/%2").arg(_version.left(1), file));
-    url.setQuery(urlQuery);
+    url.setQuery(query);
 
     int reqnr = sendRequest(url);
     if(blocking)
@@ -965,8 +977,6 @@ void QDropbox::requestSharedLink(QString file, bool blocking)
     }
     else
         requestMap[reqnr].type = QDROPBOX_REQ_SHRDLNK;
-
-    return;
 }
 
 QUrl QDropbox::requestSharedLinkAndWait(QString file)
@@ -1106,6 +1116,7 @@ void QDropbox::checkReleaseEventLoop(int reqnr)
     case QDROPBOX_REQ_BACCTOK:
     case QDROPBOX_REQ_BACCINF:
     case QDROPBOX_REQ_BMETADA:
+    case QDROPBOX_REQ_BMEDIA:
 	case QDROPBOX_REQ_BREVISI:
         stopEventLoop(); // release local event loop
         break;
@@ -1220,12 +1231,140 @@ bool QDropbox::saveFinishedRequests() const
 	return _saveFinishedRequests;
 }
 
+/* This is not working, maybe because we are not authorized in https://content.dropboxapi.com?  */
 
-void QDropbox::Download_File()
+void QDropbox::Request_Download_File(QString path_to_file)
 {
     clearError();
 
     QUrl url;
+    url.setUrl("https://content.dropboxapi.com/");
+
+    QUrlQuery query;
+    query.addQueryItem("oauth_consumer_key",_appKey);
+    query.addQueryItem("oauth_nonce", nonce);
+    query.addQueryItem("oauth_signature_method", signatureMethodString());
+    query.addQueryItem("oauth_timestamp", QString::number(timestamp));
+    query.addQueryItem("oauth_token", oauthToken);
+    query.addQueryItem("oauth_version", _version);
+
+    QString signature = oAuthSign(url);
+    query.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
+
+    url.setPath(QString("/%1/files/%2").arg(_version.left(1)).arg(path_to_file));
+    url.setQuery(query);
+
+    int request_nr = sendRequest(url, "GET");
+
+    requestMap[request_nr].type = QDROPBOX_REQ_FILE_DOWNLOAD;
+}
+
+void QDropbox::Download_File(QString response)
+{
+    /* The HTTP response contains the content metadata in JSON format within an x-dropbox-metadata header. */
+    qDebug() << "Download_File ON!";
+    parseMetadata(response);
+}
+
+
+void QDropbox::Request_Link_To_File(QString path_to_file, bool blocking)
+{
+    clearError();
+
+    timestamp = QDateTime::currentMSecsSinceEpoch()/1000;
+
+    QUrl url;
     url.setUrl(apiurl.toString());
 
+    QUrlQuery urlQuery;
+    urlQuery.addQueryItem("oauth_consumer_key", _appKey);
+    urlQuery.addQueryItem("oauth_nonce", nonce);
+    urlQuery.addQueryItem("oauth_signature_method", signatureMethodString());
+    urlQuery.addQueryItem("oauth_timestamp", QString::number(timestamp));
+    urlQuery.addQueryItem("oauth_token", oauthToken);
+    urlQuery.addQueryItem("oauth_version", _version);
+
+    QString signature = oAuthSign(url);
+    urlQuery.addQueryItem("oauth_signature", QUrl::toPercentEncoding(signature));
+
+    url.setQuery(urlQuery);
+    url.setPath(QString("/%1/media/auto/%2").arg(_version.left(1)).arg(path_to_file));
+
+    QString dataString = url.toString(QUrl::RemoveScheme|QUrl::RemoveAuthority|
+                                      QUrl::RemovePath).mid(1);
+    QByteArray postData;
+    postData.append(dataString.toUtf8());
+
+    QUrl xQuery(url.toString(QUrl::RemoveQuery)); //https://api.dropboxapi.com/1/media/auto/
+    int request_nr = sendRequest(xQuery, "POST", postData);
+
+    if(blocking)
+    {
+        requestMap[request_nr].type = QDROPBOX_REQ_BMEDIA;
+        startEventLoop();
+    }
+    else
+        requestMap[request_nr].type = QDROPBOX_REQ_MEDIA;
 }
+
+
+void QDropbox::Get_Media(QString response)
+{
+    Parse_Media(response);
+}
+
+void QDropbox::Get_Blocking_Media(QString response)
+{
+    clearError();
+    Get_Media(response);
+    stopEventLoop();
+}
+
+void QDropbox::Parse_Media(QString response)
+{
+    #ifdef QTDROPBOX_DEBUG
+        qDebug() << "== media ==" << response << "== metadata end ==";
+    #endif
+
+    QDropboxJson json;
+    json.parseString(response);
+    _tempJson.parseString(response);
+
+    if(!json.isValid())
+    {
+        errorState = QDropbox::APIError;
+        errorText  = "Dropbox API did not send correct answer for file/directory metadata.";
+
+        emit errorOccured(errorState);
+        stopEventLoop();
+        return;
+    }
+
+    Print_Json_Key_Value({"url",  "expires"}, "Media output.");
+}
+
+
+
+
+void QDropbox::Print_Json_Key_Value(const QStringList &keys, const QString &information)
+{
+    qDebug() << "\t" << information.toUpper() << ":";
+
+    QStringList key_values = _tempJson.Return_Value_of_Keys_from_Json(keys);
+
+    for(const QString &key_value : key_values)
+        qDebug() << key_value;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

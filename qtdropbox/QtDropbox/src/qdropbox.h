@@ -44,6 +44,9 @@ const qdropbox_request_type QDROPBOX_REQ_REVISIO = 0x0E;
 const qdropbox_request_type QDROPBOX_REQ_BREVISI = 0x0F;
 const qdropbox_request_type QDROPBOX_REQ_DELTA   = 0x10;
 const qdropbox_request_type QDROPBOX_REQ_BDELTA  = 0x11;
+const qdropbox_request_type QDROPBOX_REQ_FILE_DOWNLOAD  = 0x12;
+const qdropbox_request_type QDROPBOX_REQ_MEDIA  = 0x13;
+const qdropbox_request_type QDROPBOX_REQ_BMEDIA  = 0x14;
 
 //! Internally used struct to handle network requests sent from QDropbox
 /*!
@@ -134,7 +137,8 @@ public:
         WrongHttpMethod,                /*!< The REST API request used a wrong HTTP method. Dropbox API error 405 */
         MaxRequestsExceeded,            /*!< The maximum amount of requests was exceeded. Dropbox API error 503 */
         UserOverQuota,                  /*!< The user exceeded his or her storage quota. Dropbox API error 507 */
-        TokenExpired                    /*!< The access token has expired. Dropbox API error 401*/
+        TokenExpired,                    /*!< The access token has expired. Dropbox API error 401*/
+        FileNotFound
     };
 
     /*!
@@ -322,6 +326,8 @@ public:
     QUrl authorizeLink();
 
     /*!
+      Step 3 of authentication. After the /oauth/authorize step is complete, the application can call /oauth/access_token to acquire an access token.
+
       This function should be invoked after the user authorized your application. It
       retrieves an access token from the Dropbox API that you'll have to use to access
       Dropbox services.
@@ -493,8 +499,14 @@ public:
 	 */
      bool saveFinishedRequests() const;
 
-     void Download_File();
+     /*!
+      * \brief Downloads a file to local storage. Not working currently.
+      * \param path to file (must be with /dropbox/ or /sandbox/ precedence).
+      */
+     void Request_Download_File(QString path_to_file);
      void Upload_File();
+
+     void Request_Link_To_File(QString path_to_file, bool blocking = true);
 
 signals:
     /*!
@@ -595,6 +607,7 @@ signals:
 public slots:
 
 private slots:
+    //TO DO: Shouldn't requestFinished be a function?
     void requestFinished(int nr, QNetworkReply* rply);
     void networkReplyFinished(QNetworkReply* rply);
     void Output_Error(QDropbox::Error errorcode);
@@ -665,7 +678,20 @@ private:
 	void parseBlockingRevisions(QString response);
     void parseDelta(QString response);
     void parseBlockingDelta(QString response);
+    void Parse_Media(QString response);
 	void removeRequestFromMap(int rqnr);
+
+    void Download_File(QString response);
+    void Get_Media(QString response);
+    void Get_Blocking_Media(QString response);
+
+    /**
+     * @brief Prints values from valueMap in QDropboxJson for given keys
+     * @param keys - keys which to print values for
+     * @param information - additional information, ie. what URL request was used for this values.
+     */
+    void Print_Json_Key_Value(const QStringList &keys, const QString &information);
+
 };
 
 #endif // QDROPBOX_H

@@ -99,7 +99,7 @@ public:
 
 
 signals:
-    void Show_Icon(QPixmap &icon);
+    void Show_Icon(QPixmap icon);
 
 public slots:
 };

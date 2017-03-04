@@ -199,7 +199,7 @@ public:
 	  Reimplemented from QIODevice::reset().
 	  Seeks to the beginning of the file. See seek().
 	*/
-	bool reset();
+    bool reset();
 
 public slots:
     void abort();
@@ -212,7 +212,7 @@ signals:
 
 protected:
     qint64 readData(char *data, qint64 maxlen);
-    qint64 writeData(const char *data, qint64 len);
+    //qint64 writeData(const char *data, qint64 len);
 
 private slots:
     void networkRequestFinished(QNetworkReply* rply);
@@ -257,13 +257,19 @@ private:
     bool isMode(QIODevice::OpenMode mode);
     bool getFileContent(QString filename);
     void rplyFileContent(QNetworkReply* rply);
+    /* Parses response from .put() call. Saves QDropboxFileInfo from response, and emits bytes written. */
     void rplyFileWrite(QNetworkReply* rply);
     void startEventLoop();
     void stopEventLoop();
-    bool putFile();
-	void obtainMetadata();
+
+    void obtainMetadata();
 
     void _init(QDropbox *api, QString filename, qint64 bufferTh);
+
+public:
+    /* Uploads a file. Sets WaitMode to WaitForWrite. File must be opened by calling .open(Mode), and buffer must be written by call to .writeData() */
+    bool putFile();
+    qint64 writeData(const char *data, qint64 len);
 };
 
 #endif // QDROPBOXFILE_H
