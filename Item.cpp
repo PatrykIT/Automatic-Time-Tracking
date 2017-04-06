@@ -6,7 +6,9 @@
 #include <iostream>
 
 //POSIX includes
+#ifdef __linux__
 #include <dirent.h>
+#endif
 
 using std::cout;
 using std::endl;
@@ -38,6 +40,7 @@ Item::Item(Item &&rhs) noexcept
 
 void Item::Load_Icon()
 {
+#ifdef __linux__
     static const std::string icons_path = "/usr/share/pixmaps/";
     static const std::string icons_path_2 = "/usr/share/icons/hicolor/";
     static const std::string icons_path_3 = "/usr/share/icons/Humanity/";
@@ -69,6 +72,7 @@ void Item::Load_Icon()
         }
     }
     cout << "Icon for name: " << name << " wasn't found." << endl;
+    #endif
 }
 
 void Item::Scale_Icon(QPixmap &pixmap)
