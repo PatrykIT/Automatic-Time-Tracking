@@ -145,6 +145,9 @@ std::vector<std::string> Manager::Observe()
     }
 
     return Get_Processes_Names(pid_numbers);
+
+#else
+    return {};
 #endif
 }
 
