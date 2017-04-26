@@ -51,6 +51,7 @@ Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexce
 void Manager::Start()
 {
     /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
+    /* TO DO: Change it to bool (shared bool visible for read-only access by Manager). With this bool do pooling, so while(false) { poll } */
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     try
@@ -119,6 +120,7 @@ void Manager::Start()
  */
 std::vector<std::string> Manager::Observe()
 {
+#ifdef __linux__
     std::string command = "wmctrl -lp | grep -o '0x[0-9a-z]*\s*  [0-9] [0-9]\\{1,8\\}'";
     std::string system_call_result = System_Call(command);
     //LOGS("wmctrl output: " + system_call_result);
@@ -143,6 +145,7 @@ std::vector<std::string> Manager::Observe()
     }
 
     return Get_Processes_Names(pid_numbers);
+#endif
 }
 
 /**
