@@ -51,4 +51,13 @@ int main(int argc, char *argv[])
  *
  * KNOWN BUGS:
  * wmctrl doesn't see Steam running. It outputs: 0 N/A
+ *
+ *
+ *
+ * Refactoring to proper OOP:
+ * 1. We should have a class Timer. Manager would use it, instead of implementing whole functionality.
+ * 2. We should have a class Logs. It would do logs based on priority.
+ * 3. Change Manager to Abstract Factory so I can erase #ifdef's everywhere.
+ *      So there would be Manager_Linux and Manager_Windows. Both would have the same interfaces, but different implementations.
+
 */
