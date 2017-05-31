@@ -17,11 +17,11 @@
 using std::cout;
 using std::endl;
 
-std::vector<std::pair<Item, Manager::Process_Statistics>> Manager::objects;
+std::vector<std::pair<Item, Manager::Process_Statistics>> Manager::applications;
 
 Manager::Manager(QObject *parent) : QObject(parent)
 {
-    objects.reserve(128);
+    applications.reserve(128);
 }
 
 Manager::Process_Statistics::Process_Statistics() : Process_Statistics(0, 0, 0)
@@ -71,8 +71,8 @@ void Manager::Start()
             if(!processes_names.empty())
             {
                 /* Two-way check.
-                 * 1: Check if items (names) in vector<objects> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
-                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<objects>). If not, add them to observer.
+                 * 1: Check if items (names) in vector<applications> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
+                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<applications>). If not, add them to observer.
                  * */
 
                 /* 1-way check */
@@ -280,17 +280,17 @@ std::vector<std::string> Manager::Get_Processes_Names(const std::set<int> &pid_n
 
 void Manager::Add_Item_to_Observe(const Item &item, Process_Statistics time_stats)
 {
-    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, time_stats));
+    applications.emplace_back(std::pair<Item, Manager::Process_Statistics> (item, time_stats));
 }
 
 void Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
 {
-    objects.emplace_back(std::pair<Item, Manager::Process_Statistics> (std::move(item), std::move(time_stats)));
+    applications.emplace_back(std::pair<Item, Manager::Process_Statistics> (std::move(item), std::move(time_stats)));
 }
 
 void Manager::Print_Elapsed_Time() const
 {
-    std::for_each(objects.begin(), objects.end(), [](const std::pair<Item, Process_Statistics> &object)
+    std::for_each(applications.begin(), applications.end(), [](const std::pair<Item, Process_Statistics> &object)
     {
         cout << "Time of: " << object.first.name <<" is: " << object.second.total_hours << ":" << object.second.total_minutes << ":" << object.second.total_seconds << endl;
     });
@@ -303,7 +303,7 @@ void Manager::Print_Elapsed_Time() const
  */
 void Manager::Check_if_Applications_are_Running(std::vector<std::string> &processes_names)
 {
-    for(std::pair<Item, Process_Statistics> &item : objects)
+    for(std::pair<Item, Process_Statistics> &item : applications)
     {
         /* If application was being observed (or was saved in statistics file), but now it is OFF. */
         if(std::find_if(processes_names.begin(), processes_names.end(), [&item](const std::string &name) { return name == item.first.name; }) == processes_names.end())
@@ -339,8 +339,8 @@ void Manager::Add_New_Observed_Objects(std::vector<std::string> &processes_names
 {
     for(auto &name : processes_names)
     {
-        /* Check if process currently running is in our observer vector 'objects'. If not, add it for counting time. */
-        if(std::find_if(objects.begin(), objects.end(), [&name](const std::pair<Item, Manager::Process_Statistics> &rhs) { return name == rhs.first.name; }) == objects.end())
+        /* Check if process currently running is in our observer vector 'applications'. If not, add it for counting time. */
+        if(std::find_if(applications.begin(), applications.end(), [&name](const std::pair<Item, Manager::Process_Statistics> &rhs) { return name == rhs.first.name; }) == applications.end())
         {
             /* Add new process */
             Item item(std::move(name));
@@ -359,7 +359,7 @@ void Manager::Save_Statistics_to_File()
     if(!file_stats.is_open())
         throw std::ios_base::failure("Couldn't open a file in order to save statistics: " + path_to_stats_file);
 
-    for(auto &object : objects)
+    for(auto &object : applications)
     {
         if(object.second.is_running)
             object.second.Stop_Counting_Time();
