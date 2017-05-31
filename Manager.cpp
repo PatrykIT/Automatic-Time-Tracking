@@ -81,8 +81,8 @@ void Manager::Start()
                 Add_New_Observed_Objects(processes_names);
 
                 //LOGS("\n");
-                ++counter;
             }
+            ++counter;
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
