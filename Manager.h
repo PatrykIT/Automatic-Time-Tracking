@@ -11,19 +11,36 @@
 #include <tuple>
 
 class Item;
+struct Logger;
+
+
+struct Process_Statistics
+{
+
+};
 
 
 class Abstract_Manager : public QObject
 {
     Q_OBJECT
 
-private:
+/* Methods */
+protected:
     virtual void Save_Statistics_to_File() = 0;
     virtual void Load_Statistics_from_File() = 0;
-    virtual void LOGS(const std::string& info) const = 0;
+    virtual void LOGS(const Logger &info) const = 0;
+
+/* Members */
+protected:
+    Process_Statistics proccess_statistic_object;
+    std::vector<std::pair<Item, Process_Statistics>> applications;
+    std::fstream file_stats;
+
+
 };
 
-struct Process_Statistics
+
+struct Logger
 {
 
 };
@@ -66,7 +83,7 @@ private:
         typedef std::chrono::seconds seconds;
     };
 
-    static std::vector<std::pair<Item, Process_Statistics>> objects;
+    static std::vector<std::pair<Item, Process_Statistics>> applications;
 
     std::fstream file_stats;
     const std::string path_to_stats_file = "Statistics.txt";
