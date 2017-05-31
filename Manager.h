@@ -35,14 +35,22 @@ protected:
     Process_Statistics proccess_statistic_object;
     std::vector<std::pair<Item, Process_Statistics>> applications;
     std::fstream file_stats;
+    const std::string path_to_stats_file;
 
 
 };
 
 
-struct Logger
+class Logger
 {
+    friend class Abstract_Manager;
+private:
+    std::fstream log_file;
+    std::string path_to_log_file = "Logs.txt";
+    std::string TAG; //Each class that has a Logger saves its name as a TAG.
 
+public:
+    void Log_To_File(std::string log_message); //TODO: Add implementation
 };
 
 class Manager : public QObject
