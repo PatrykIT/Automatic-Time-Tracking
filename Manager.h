@@ -13,6 +13,21 @@
 class Item;
 
 
+class Abstract_Manager : public QObject
+{
+    Q_OBJECT
+
+private:
+    virtual void Save_Statistics_to_File() = 0;
+    virtual void Load_Statistics_from_File() = 0;
+    virtual void LOGS(const std::string& info) const = 0;
+};
+
+struct Process_Statistics
+{
+
+};
+
 class Manager : public QObject
 {
     Q_OBJECT
