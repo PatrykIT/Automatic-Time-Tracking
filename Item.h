@@ -10,6 +10,7 @@
 class Item /* This is a single application, that we observe. */
 {
     friend class Manager;
+    friend class Abstract_Manager;
 
 //Members
 private:

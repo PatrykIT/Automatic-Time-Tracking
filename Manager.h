@@ -3,6 +3,7 @@
 
 //Local includes
 #include <mainwindow.h>
+#include "Item.h"
 
 //C++ includes
 #include <set>
@@ -61,12 +62,12 @@ protected:
     virtual void Load_Statistics_from_File() = 0;
     virtual std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const = 0;
 
-    Manager_Interface() { }
+    Manager_Interface() { } //Should Ctr be protected or public?
 
 public:
     virtual void Start() = 0;
 
-    virtual ~Manager_Interface() = 0;
+    virtual ~Manager_Interface() = default;
 };
 
 
@@ -79,15 +80,15 @@ protected:
     //virtual void LOGS(const Logger &info) const = 0;
 
      /* TODO: Implement default behaviour */
-    virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats);
-    virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats);
+    virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) override;
+    virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) override;
 
-    virtual void Check_if_Applications_are_Running();
-    virtual void Add_New_Observed_Objects();
+    virtual void Check_if_Applications_are_Running() override;
+    virtual void Add_New_Observed_Objects() override;
 
-    virtual void Save_Statistics_to_File();
-    virtual void Load_Statistics_from_File();
-    virtual std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const;
+    virtual void Save_Statistics_to_File() override;
+    virtual void Load_Statistics_from_File() override;
+    virtual std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const override;
 
 /* Members */
 protected:
@@ -98,17 +99,18 @@ protected:
     std::fstream file_stats;
     std::string path_to_stats_file;
 
-    Abstract_Manager() { }
-
 
 public:
     virtual void Print_Elapsed_Time() const;
+
+    explicit Abstract_Manager(QObject *parent = 0);
+    virtual ~Abstract_Manager() = default;
 
 signals:
     void Show_Icon(QPixmap icon);
 };
 
-class Linux_Manager : private Abstract_Manager
+class Linux_Manager : protected Abstract_Manager
 {
     Q_OBJECT
 
@@ -117,10 +119,22 @@ private:
     std::set<int> Get_PIDs_from_Strings(std::vector<std::string> &input) const;
     std::vector<std::string> Split_Command_Output_to_Strings(const std::string &input) const;
     std::vector<std::string> Get_Processes_Names(const std::set<int> &pid_numbers) const;
-    std::vector<std::string> Get_Running_Applications();
+    std::vector<std::string> Get_Running_Applications() override;
 public:
 
+    explicit Linux_Manager(QObject *parent = 0);
+    ~Linux_Manager() = default;
 };
+
+
+
+
+class Windows_Manager : protected Abstract_Manager
+{
+
+};
+
+
 
 
 class Logger
@@ -134,6 +148,36 @@ private:
 public:
     void Log_To_File(std::string log_message); //TODO: Add implementation
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
