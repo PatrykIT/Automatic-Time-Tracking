@@ -45,6 +45,7 @@ Manager::Process_Statistics::Process_Statistics(Process_Statistics &&rhs) noexce
     is_running(rhs.is_running)
 { }
 
+
 /**
  * @brief Main observing loop.
  */
@@ -630,25 +631,26 @@ int Process_Statistics::Parse_Minutes()
 
 
 
-Abstract_Manager::Abstract_Manager(QObject *parent)
+Abstract_OS_Manager::Abstract_OS_Manager(QObject *parent)
 {
     applications.reserve(128);
+    processes_names.reserve(128);
 }
 
 /* TODO: Change this to universal reference and std::forward objects. */
-void Abstract_Manager::Add_Item_to_Observe(const Item &item, Process_Statistics time_stats)
+void Abstract_OS_Manager::Add_Item_to_Observe(const Item &item, Process_Statistics time_stats)
 {
     applications.emplace_back(std::pair<Item, Process_Statistics> (item, time_stats));
 }
 
 
-void Abstract_Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
+void Abstract_OS_Manager::Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats)
 {
     applications.emplace_back(std::pair<Item, Process_Statistics> (std::move(item), std::move(time_stats)));
 }
 
 
-void Abstract_Manager::Check_if_Applications_are_Running()
+void Abstract_OS_Manager::Check_if_Applications_are_Running()
 {
     for(std::pair<Item, Process_Statistics> &item : applications)
     {
@@ -679,7 +681,7 @@ void Abstract_Manager::Check_if_Applications_are_Running()
     }
 }
 
-void Abstract_Manager::Add_New_Observed_Objects()
+void Abstract_OS_Manager::Add_New_Observed_Objects()
 {
     for(auto &name : processes_names)
     {
@@ -695,7 +697,7 @@ void Abstract_Manager::Add_New_Observed_Objects()
     }
 }
 
-void Abstract_Manager::Save_Statistics_to_File()
+void Abstract_OS_Manager::Save_Statistics_to_File()
 {
     file_stats.open(path_to_stats_file, std::fstream::out);
     if(!file_stats.is_open())
@@ -713,7 +715,7 @@ void Abstract_Manager::Save_Statistics_to_File()
     file_stats.close();
 }
 
-void Abstract_Manager::Load_Statistics_from_File()
+void Abstract_OS_Manager::Load_Statistics_from_File()
 {
     file_stats.open(path_to_stats_file, std::fstream::in);
     if(!file_stats.is_open())
@@ -743,7 +745,7 @@ void Abstract_Manager::Load_Statistics_from_File()
     file_stats.close();
 }
 
-std::tuple<std::string, int, int, int> Abstract_Manager::Parse_File_Statistics(const std::string &line) const
+std::tuple<std::string, int, int, int> Abstract_OS_Manager::Parse_File_Statistics(const std::string &line) const
 {
     std::stringstream line_stream (line);
     std::string name_of_process;
@@ -797,7 +799,8 @@ std::tuple<std::string, int, int, int> Abstract_Manager::Parse_File_Statistics(c
      throw std::ios_base::failure("Couldn't find matching pattern - :::");
 }
 
-void Abstract_Manager::Print_Elapsed_Time() const
+
+void Abstract_OS_Manager::Print_Elapsed_Time() const
 {
     std::for_each(applications.begin(), applications.end(), [](const std::pair<Item, Process_Statistics> &object)
     {
@@ -807,11 +810,78 @@ void Abstract_Manager::Print_Elapsed_Time() const
 }
 
 
+void Abstract_OS_Manager::Start()
+{
+    /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
+    /* TO DO: Change it to bool (shared bool visible for read-only access by Manager). With this bool do pooling, so while(false) { poll } */
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    try
+    {
+        /* Add processes from file */
+        Load_Statistics_from_File();
+
+
+        int counter = 0;
+        /* Observe if there are new processes, and if old ones are still ON. */
+        while(counter < 5)
+        {
+            processes_names = Get_Running_Applications();
+
+            if(!processes_names.empty())
+            {
+                /* Two-way check.
+                 * 1: Check if items (names) in vector<applications> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
+                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<applications>). If not, add them to observer.
+                 * */
+
+                /* 1-way check */
+                Check_if_Applications_are_Running();
+                /* 2-way check */
+                Add_New_Observed_Objects();
+
+                //LOGS("\n");
+            }
+            ++counter;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        Save_Statistics_to_File();
+        cout << "My work is done." << endl;
+    }
+    catch(std::ios_base::failure &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //TO DO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
+    }
+    catch(std::runtime_error &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //TO DO: Save Time
+    }
+    catch(std::bad_alloc &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //TO DO: Save Time
+    }
+    catch (...)
+    {
+        qDebug() << "Unknow exception caught.";
+        //LOGS("ERROR! Unknow exception.");
+        //TO DO: Save Time
+    }
+}
 
 
 
 
-Linux_Manager::Linux_Manager(QObject *parent) : Abstract_Manager(parent)
+
+
+
+
+Linux_Manager::Linux_Manager(QObject *parent) : Abstract_OS_Manager(parent)
 {
 
 }
@@ -976,11 +1046,15 @@ std::vector<std::string> Linux_Manager::Get_Running_Applications()
 
 
 
+Windows_Manager::Windows_Manager(QObject *parent) : Abstract_OS_Manager(parent)
+{
 
+}
 
+std::vector<std::string> Windows_Manager::Get_Running_Applications()
+{
 
-
-
+}
 
 
 
