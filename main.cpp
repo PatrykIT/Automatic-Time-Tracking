@@ -14,12 +14,15 @@
 
 //QTEST_MAIN(QtDropboxTest)
 
+//#define OLD_DESIGN
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
 
+#ifdef OLD_DESIGN
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
     std::unique_ptr<Manager> manager(new Manager);
 
@@ -29,6 +32,14 @@ int main(int argc, char *argv[])
     /* Disconnect logic of program from GUI */
     std::thread manager_thread(&Manager::Start, std::move(manager));
     manager_thread.detach();
+#else
+#ifdef _WIN32 //TODO: Change it to Abstract Factory
+   std::unique_ptr<Windows_Manager> manager(new Windows_Manager);
+   QObject::connect(manager.get(), &Windows_Manager::Show_Icon, &w, &MainWindow::Show_Icon, Qt::BlockingQueuedConnection);/* TO DO: Wouldn't QueuedConnection be better? */
+   std::thread manager_thread(&Windows_Manager::Start, std::move(manager));
+   manager_thread.detach();
+#endif
+#endif
 
     return a.exec();
 }

@@ -14,6 +14,14 @@
 #include <ctime>
 #include <functional>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <tlhelp32.h>
+#include <tchar.h>
+
+void printError( TCHAR* msg );
+#endif
+
 using std::cout;
 using std::endl;
 
@@ -1044,23 +1052,153 @@ std::vector<std::string> Linux_Manager::Get_Running_Applications()
 
 
 
+
+
+
+
+
+
+
+
+
+
 Windows_Manager::Windows_Manager(QObject *parent) : Abstract_OS_Manager(parent)
 {
 
 }
 
+
+
 std::vector<std::string> Windows_Manager::Get_Running_Applications()
 {
+    HANDLE hProcessSnap;
+    PROCESSENTRY32 pe32;
 
+    // Take a snapshot of all processes in the system.
+    hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+    if( hProcessSnap == INVALID_HANDLE_VALUE )
+    {
+      printError( TEXT("CreateToolhelp32Snapshot (of processes)") );
+      return {};
+    }
+
+    // Set the size of the structure before using it.
+    pe32.dwSize = sizeof( PROCESSENTRY32 );
+
+    /* Retrieve information about the first process and exit if unsuccessful. */
+    if( !Process32First( hProcessSnap, &pe32 ) )
+    {
+      printError( TEXT("Process32First") ); // show cause of failure
+      CloseHandle( hProcessSnap );          // clean the snapshot object
+      return {};
+    }
+
+    // Now walk the snapshot of processes, and
+    // display information about each process in turn
+    do
+    {
+        //char *process_name = new char[4096];
+        char process_name[1024];
+        wcstombs(process_name, pe32.szExeFile, 4096);
+        processes_names.emplace_back(process_name);
+
+        std::cout << "Process: " << pe32.szExeFile << "\n";
+
+
+    } while( Process32Next( hProcessSnap, &pe32 ) );
+
+    CloseHandle( hProcessSnap );
+    return processes_names;
 }
 
 
 
+void Windows_Manager::Start()
+{
+    /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
+    /* TO DO: Change it to bool (shared bool visible for read-only access by Manager). With this bool do pooling, so while(false) { poll } */
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    try
+    {
+        /* Add processes from file */
+        Load_Statistics_from_File();
+
+        int counter = 0;
+        /* Observe if there are new processes, and if old ones are still ON. */
+        while(counter < 5)
+        {
+            Get_Running_Applications();
+
+            if(!processes_names.empty())
+            {
+                /* Two-way check.
+                 * 1: Check if items (names) in vector<applications> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
+                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<applications>). If not, add them to observer.
+                 * */
+
+                /* 1-way check */
+                Check_if_Applications_are_Running();
+                /* 2-way check */
+                Add_New_Observed_Objects();
+            }
+
+            ++counter;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        Save_Statistics_to_File();
+        cout << "My work is done." << endl;
+    }
+    catch(std::ios_base::failure &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //TO DO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
+    }
+    catch(std::runtime_error &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //TO DO: Save Time
+    }
+    catch(std::bad_alloc &exception)
+    {
+        qDebug() << "Exception caught: " << exception.what();
+        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
+        //TO DO: Save Time
+    }
+    catch (...)
+    {
+        qDebug() << "Unknow exception caught.";
+        //LOGS("ERROR! Unknow exception.");
+        //TO DO: Save Time
+    }
+}
 
 
 
+void printError( TCHAR* msg )
+{
+  DWORD eNum;
+  TCHAR sysMsg[256];
+  TCHAR* p;
 
+  eNum = GetLastError( );
+  FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+         NULL, eNum,
+         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+         sysMsg, 256, NULL );
 
+  // Trim the end of the line and terminate it with a null
+  p = sysMsg;
+  while( ( *p > 31 ) || ( *p == 9 ) )
+    ++p;
+  do { *p-- = 0; } while( ( p >= sysMsg ) &&
+                          ( ( *p == '.' ) || ( *p < 33 ) ) );
+
+  // Display the message
+//  /_tprintf( TEXT("\n  WARNING: %s failed with error %d (%s)"), msg, eNum, sysMsg );
+}
 
 
 
