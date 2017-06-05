@@ -56,7 +56,8 @@ class Manager_Interface
 {
 protected:
     Manager_Interface() { }
-    virtual ~Manager_Interface() = default; //Disallow polymorphic deletion through base pointer.
+    /* Herb's advice: A base class destructor should be either public and virtual, or protected and nonvirtual. */
+    ~Manager_Interface() = default; //Disallow polymorphic deletion through base pointer.
 
     virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) = 0;
     virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) = 0;
@@ -116,8 +117,8 @@ public:
 
 
 
-signals:
-    void Show_Icon(QPixmap icon);
+//signals:
+//    void Show_Icon(QPixmap icon);
 };
 
 
@@ -139,7 +140,7 @@ public:
     ~Linux_Manager() = default;
 
 signals:
-    void Show_Icon(QPixmap icon);
+    void Show_Icon(QPixmap icon); //TODO: This signal should only be in Abstract_OS_Manager.
 };
 
 
@@ -157,7 +158,7 @@ public:
     ~Windows_Manager() = default;
 
 signals:
-    void Show_Icon(QPixmap icon);
+    void Show_Icon(QPixmap icon); //TODO: This signal should only be in Abstract_OS_Manager.
 };
 
 

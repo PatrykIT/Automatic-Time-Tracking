@@ -839,11 +839,9 @@ void Abstract_OS_Manager::Start()
                 Check_if_Applications_are_Running();
                 /* 2-way check */
                 Add_New_Observed_Objects();
-
-                //LOGS("\n");
             }
             ++counter;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::seconds(1)); //Sleep so GUI can show current icon.
         }
 
         Save_Statistics_to_File();
