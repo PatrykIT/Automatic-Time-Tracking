@@ -59,6 +59,7 @@ protected:
     /* Herb's advice: A base class destructor should be either public and virtual, or protected and non-virtual. */
     ~Manager_Interface() = default; //Disallow polymorphic deletion through base pointer.
 
+    /* TODO: Change this to private. https://isocpp.org/wiki/faq/strange-inheritance#private-virtuals */
     virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) = 0;
     virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) = 0;
 
@@ -88,6 +89,9 @@ protected:
     //virtual void LOGS(const Logger &info) const = 0;
 
      /* TODO: Implement default behaviour */
+     /* TODO: Change this to public. Interface must be consistent with Linux / Windows manager. 
+      * User will use Abstract_OS_Manager *manager = new FactoryManager() // returns Linux or Windows manager 
+      * so those functions must be callable from outside of class (by the user). */
     virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) override;
     virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) override;
 
