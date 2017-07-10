@@ -91,10 +91,13 @@ protected:
 
     //virtual void LOGS(const Logger &info) const = 0;
 
-     /* TODO: Implement default behaviour */
-     /* TODO: Change this to public. Interface must be consistent with Linux / Windows manager. 
-      * User will use Abstract_OS_Manager *manager = new FactoryManager() // returns Linux or Windows manager 
-      * so those functions must be callable from outside of class (by the user). */
+private:
+    /* TODO: Change this to public. Interface must be consistent with Linux / Windows manager.
+    * User will use Abstract_OS_Manager *manager = new FactoryManager() // returns Linux or Windows manager
+    * so those functions must be callable from outside of class (by the user).
+    *
+    * QUESTION: Should it be private or public? From inheritance, let's say in future someone would like to create iOS_Manager that inherits from this class.
+    * Think about flexibility of private vs public in that case. */
     virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) override;
     virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) override;
 
