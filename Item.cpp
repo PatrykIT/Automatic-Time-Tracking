@@ -41,6 +41,7 @@ Item::Item(Item &&rhs) noexcept
 void Item::Load_Icon()
 {
 #ifdef __linux__
+    //TODO: Move those paths to separate namespace.
     static const std::string icons_path = "/usr/share/pixmaps/";
     static const std::string icons_path_2 = "/usr/share/icons/hicolor/";
     static const std::string icons_path_3 = "/usr/share/icons/Humanity/";
