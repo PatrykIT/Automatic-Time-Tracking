@@ -101,25 +101,25 @@ void Manager::Start()
     catch(std::ios_base::failure &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
-        //TO DO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
+        //TODO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
     }
     catch(std::runtime_error &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
         LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
-        //TO DO: Save Time
+        //TODO: Save Time
     }
     catch(std::bad_alloc &exception)
     {
         qDebug() << "Exception caught: " << exception.what();
         LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
-        //TO DO: Save Time
+        //TODO: Save Time
     }
     catch (...)
     {
         qDebug() << "Unknow exception caught.";
         LOGS("ERROR! Unknow exception.");
-        //TO DO: Save Time
+        //TODO: Save Time
     }
 }
 
@@ -900,9 +900,9 @@ Linux_Manager::Linux_Manager(QObject *parent) : Abstract_OS_Manager(parent)
  */
 std::string Linux_Manager::System_Call(const std::string &command) const
 {
+#ifdef __linux__
     const int buffer_size = 1024;
     char buffer[buffer_size];
-    std::string result = "";
 
     /* Use unique_ptr with custom deleter. */
     std::unique_ptr<FILE, decltype(&pclose)> pipe (popen(command.c_str(), "r"), pclose);
@@ -910,6 +910,7 @@ std::string Linux_Manager::System_Call(const std::string &command) const
     if (!pipe)
         throw std::runtime_error("popen() failed!");
 
+    std::string result = "";
     /* Append output from system call to string. */
     while (feof(pipe.get()) == 0)
     {
@@ -920,6 +921,9 @@ std::string Linux_Manager::System_Call(const std::string &command) const
     }
 
     return result;
+#else
+    return { };
+#endif
 }
 
 
@@ -1078,8 +1082,8 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
     hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
     if( hProcessSnap == INVALID_HANDLE_VALUE )
     {
-      printError( TEXT("CreateToolhelp32Snapshot (of processes)") );
-      return {};
+      auto error_code = GetLastError();
+      throw std::runtime_error(__func__ + std::string(" : Error code: ") + std::to_string(error_code));
     }
 
     // Set the size of the structure before using it.
@@ -1088,22 +1092,20 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
     /* Retrieve information about the first process and exit if unsuccessful. */
     if( !Process32First( hProcessSnap, &pe32 ) )
     {
-      printError( TEXT("Process32First") ); // show cause of failure
+      auto error_code = GetLastError();
       CloseHandle( hProcessSnap );          // clean the snapshot object
-      return {};
+      throw std::runtime_error(__func__ + std::string(" : Error code: ") + std::to_string(error_code));
     }
 
     // Now walk the snapshot of processes, and
     // display information about each process in turn
     do
     {
-        //char *process_name = new char[4096];
         char process_name[1024];
         wcstombs(process_name, pe32.szExeFile, 4096);
         processes_names.emplace_back(process_name);
 
-        std::cout << "Process: " << pe32.szExeFile << "\n";
-
+        std::cout << "Process: " << process_name << "\n";
 
     } while( Process32Next( hProcessSnap, &pe32 ) );
 
@@ -1112,7 +1114,7 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
 }
 
 
-
+//TODO: Start() method should be in Abstract_OS_Manager - because the logic should work the same for Windows as for Linux. This is temporary, while I don't have a Factory method.
 void Windows_Manager::Start()
 {
     /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
@@ -1174,33 +1176,6 @@ void Windows_Manager::Start()
         //TO DO: Save Time
     }
 }
-
-
-
-void printError( TCHAR* msg )
-{
-  DWORD eNum;
-  TCHAR sysMsg[256];
-  TCHAR* p;
-
-  eNum = GetLastError( );
-  FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-         NULL, eNum,
-         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-         sysMsg, 256, NULL );
-
-  // Trim the end of the line and terminate it with a null
-  p = sysMsg;
-  while( ( *p > 31 ) || ( *p == 9 ) )
-    ++p;
-  do { *p-- = 0; } while( ( p >= sysMsg ) &&
-                          ( ( *p == '.' ) || ( *p < 33 ) ) );
-
-  // Display the message
-//  /_tprintf( TEXT("\n  WARNING: %s failed with error %d (%s)"), msg, eNum, sysMsg );
-}
-
-
 
 
 

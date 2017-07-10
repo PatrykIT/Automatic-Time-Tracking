@@ -34,9 +34,10 @@ int main(int argc, char *argv[])
     manager_thread.detach();
 #else
 #ifdef _WIN32 //TODO: Change it to Abstract Factory
-   std::unique_ptr<Windows_Manager> manager(new Windows_Manager);
-   QObject::connect(manager.get(), &Windows_Manager::Show_Icon, &w, &MainWindow::Show_Icon, Qt::BlockingQueuedConnection);/* TO DO: Wouldn't QueuedConnection be better? */
-   std::thread manager_thread(&Windows_Manager::Start, std::move(manager));
+   std::unique_ptr<Abstract_OS_Manager> manager = std::make_unique<Windows_Manager>();
+   QObject::connect(dynamic_cast<Windows_Manager*>(manager.get()), &Windows_Manager::Show_Icon, &w, &MainWindow::Show_Icon, Qt::BlockingQueuedConnection); // TODO: Wouldn't QueuedConnection be better?
+
+   std::thread manager_thread(&Abstract_OS_Manager::Start, std::move(manager));
    manager_thread.detach();
 #endif
 #endif

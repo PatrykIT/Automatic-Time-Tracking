@@ -51,6 +51,9 @@ struct Process_Statistics
 
 
 
+/* TODO: Consider PIMPL idiom or Template Method pattern.
+ * https://isocpp.org/wiki/faq/strange-inheritance#private-virtuals
+ * https://stackoverflow.com/questions/3970279/what-is-the-point-of-a-private-pure-virtual-function */
 
 class Manager_Interface
 {
@@ -59,20 +62,20 @@ protected:
     /* Herb's advice: A base class destructor should be either public and virtual, or protected and non-virtual. */
     ~Manager_Interface() = default; //Disallow polymorphic deletion through base pointer.
 
-    /* TODO: Change this to private. https://isocpp.org/wiki/faq/strange-inheritance#private-virtuals */
+    /* TODO: Make this work as a private method. https://isocpp.org/wiki/faq/strange-inheritance#private-virtuals */
+    virtual std::vector<std::string> Get_Running_Applications() = 0;
+    virtual void Start() = 0;
+
+private:
     virtual void Add_Item_to_Observe(const Item &item, Process_Statistics time_stats) = 0;
     virtual void Add_Item_to_Observe(Item &&item, Process_Statistics &&time_stats) = 0;
 
     virtual void Check_if_Applications_are_Running() = 0;
     virtual void Add_New_Observed_Objects() = 0;
-    virtual std::vector<std::string> Get_Running_Applications() = 0;
 
     virtual void Save_Statistics_to_File() = 0;
     virtual void Load_Statistics_from_File() = 0;
     virtual std::tuple<std::string, int, int, int> Parse_File_Statistics(const std::string &line) const = 0;
-
-public:
-    virtual void Start() = 0;
 };
 
 
@@ -128,7 +131,7 @@ signals:
 
 
 
-class Linux_Manager final : protected Abstract_OS_Manager
+class Linux_Manager final : public Abstract_OS_Manager
 {
     Q_OBJECT
 
@@ -150,7 +153,10 @@ signals:
 
 
 
-class Windows_Manager final : protected Abstract_OS_Manager
+
+
+
+class Windows_Manager final : public Abstract_OS_Manager
 {
     Q_OBJECT
 
@@ -166,6 +172,8 @@ public:
 signals:
     void Show_Icon(QPixmap icon); //TODO: This signal should only be in Abstract_OS_Manager.
 };
+
+
 
 
 
@@ -215,11 +223,7 @@ public:
 
 
 
-
-
-
-
-
+/* -------------------------------------------------------------- OLD INTERFACE -------------------------------------------------------------- */
 
 class Manager : public QObject
 {
