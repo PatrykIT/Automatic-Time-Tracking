@@ -167,8 +167,6 @@ public:
     explicit Windows_Manager(QObject *parent = 0);
     ~Windows_Manager() = default;
 
-    virtual void Start();
-
 signals:
     void Show_Icon(QPixmap icon); //TODO: This signal should only be in Abstract_OS_Manager.
 };

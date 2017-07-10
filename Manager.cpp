@@ -753,6 +753,7 @@ void Abstract_OS_Manager::Load_Statistics_from_File()
     file_stats.close();
 }
 
+//TODO: This needs to be changed to a JSON standard!
 std::tuple<std::string, int, int, int> Abstract_OS_Manager::Parse_File_Statistics(const std::string &line) const
 {
     std::stringstream line_stream (line);
@@ -1092,9 +1093,9 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
     /* Retrieve information about the first process and exit if unsuccessful. */
     if( !Process32First( hProcessSnap, &pe32 ) )
     {
-      auto error_code = GetLastError();
-      CloseHandle( hProcessSnap );          // clean the snapshot object
-      throw std::runtime_error(__func__ + std::string(" : Error code: ") + std::to_string(error_code));
+        auto error_code = GetLastError();
+        CloseHandle( hProcessSnap );          // clean the snapshot object
+        throw std::runtime_error(__func__ + std::string(" : Error code: ") + std::to_string(error_code));
     }
 
     // Now walk the snapshot of processes, and
@@ -1103,8 +1104,6 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
     {
         char process_name[1024];
         wcstombs(process_name, pe32.szExeFile, 4096);
-        processes_names.emplace_back(process_name);
-
         std::cout << "Process: " << process_name << "\n";
 
     } while( Process32Next( hProcessSnap, &pe32 ) );
@@ -1112,72 +1111,6 @@ std::vector<std::string> Windows_Manager::Get_Running_Applications()
     CloseHandle( hProcessSnap );
     return processes_names;
 }
-
-
-//TODO: Start() method should be in Abstract_OS_Manager - because the logic should work the same for Windows as for Linux. This is temporary, while I don't have a Factory method.
-void Windows_Manager::Start()
-{
-    /* We're calling Start() from MainWindow constructor. Let's delay start so GUI is all ready. */
-    /* TO DO: Change it to bool (shared bool visible for read-only access by Manager). With this bool do pooling, so while(false) { poll } */
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    try
-    {
-        /* Add processes from file */
-        Load_Statistics_from_File();
-
-        int counter = 0;
-        /* Observe if there are new processes, and if old ones are still ON. */
-        while(counter < 5)
-        {
-            Get_Running_Applications();
-
-            if(!processes_names.empty())
-            {
-                /* Two-way check.
-                 * 1: Check if items (names) in vector<applications> are now in vector <processes names>. If not, stop counting time for them - they were switched off.
-                 * 2: Check if apps that we are observing now (vector<processes_names>) are in our observer (vector<applications>). If not, add them to observer.
-                 * */
-
-                /* 1-way check */
-                Check_if_Applications_are_Running();
-                /* 2-way check */
-                Add_New_Observed_Objects();
-            }
-
-            ++counter;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-
-        Save_Statistics_to_File();
-        cout << "My work is done." << endl;
-    }
-    catch(std::ios_base::failure &exception)
-    {
-        qDebug() << "Exception caught: " << exception.what();
-        //TO DO: Save Time. Input/Output failed, so it would be better to try to save time online, in a cloud.
-    }
-    catch(std::runtime_error &exception)
-    {
-        qDebug() << "Exception caught: " << exception.what();
-        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
-        //TO DO: Save Time
-    }
-    catch(std::bad_alloc &exception)
-    {
-        qDebug() << "Exception caught: " << exception.what();
-        //LOGS(std::string("ERROR! runtime_error exception caught: ") + exception.what());
-        //TO DO: Save Time
-    }
-    catch (...)
-    {
-        qDebug() << "Unknow exception caught.";
-        //LOGS("ERROR! Unknow exception.");
-        //TO DO: Save Time
-    }
-}
-
-
 
 
 
